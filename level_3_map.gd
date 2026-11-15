@@ -75,7 +75,7 @@ const BLOCKS = [
 	# 3 Ancient Mechanisms
 	[4200, 380, 4560, 700, "ruin"],
 	[4558, 408, 4590, 700, "ruin"],          # the gap a stone fits in (plate at the bottom)
-	[4590, 380, 5480, 700, "ruin"],
+	[4590, 380, 5520, 700, "ruin"],
 	[4200, 0, 5000, 200, "ruin"],
 	[4900, 0, 5000, 260, "ruin"],            # above door 2
 	[5400, -100, 6250, 30, "ruin"],          # machine hall ceiling
@@ -253,7 +253,7 @@ const ENEMIES = [
 ]
 
 const CHESTS = [[2750, 230], [2300, 540], [6930, 120], [8400, 230], [11000, 600 - 400]]
-const CHECKPOINTS = [[1650, 380], [3560, 380], [5050, 380], [6280, 150], [7250, 260], [7820, 380], [9450, 380],
+const CHECKPOINTS = [[1650, 380], [3560, 380], [5050, 380], [6235, 150], [7272, 260], [7820, 380], [9450, 380],
 	[10860, 380], [12070, 380], [12860, 380], [13480, 170], [ESCAPE_START.x, ESCAPE_START.y], [16700, 170]]
 
 # SECRETS: [left, top, right, bottom, covered?]
@@ -323,7 +323,7 @@ const REGIONS = [
 
 func _ready() -> void:
 	var spikes = SPIKES.duplicate()
-	for x in range(6280, 7740, 64):   # the whole Collapsing Depths pit
+	for x in range(6280, 7760, 64):   # the whole Collapsing Depths pit
 		spikes.append([x, 640])
 	build({
 		"blocks": BLOCKS, "spikes": spikes, "movers": MOVERS, "zappers": ZAPPERS, "doors": DOORS,

@@ -50,7 +50,7 @@ static func drop(parent: Node, x: float, floor_top: float, warn: float, size: fl
 		rock.global_position.y = y
 		var level = rock.get_tree().current_scene
 		var p = level.get("player")
-		if p and not hit[0] and absf(p.global_position.x - x) < 7.0 * size + 10.0 and absf(p.global_position.y - y) < 7.0 * size + 12.0:
+		if p and not hit[0] and y > floor_top - 100.0 and absf(p.global_position.x - x) < 7.0 * size + 10.0 and absf(p.global_position.y - y) < 7.0 * size + 12.0:
 			hit[0] = true
 			level.enemy_hit_player(),
 		floor_top - 300.0, floor_top - 7.0 * size, 0.35).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
