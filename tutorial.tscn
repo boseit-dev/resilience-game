@@ -895,8 +895,6 @@ texture = ExtResource("7_bsk3x")
 
 [node name="Checkpoints" type="Node2D" parent="." unique_id=1742624858]
 
-[node name="Npcs" type="Node2D" parent="." unique_id=1578149620]
-
 [node name="Decor2" type="Node2D" parent="." unique_id=1839799730]
 z_index = -1
 

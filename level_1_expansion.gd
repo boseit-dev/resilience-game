@@ -90,7 +90,7 @@ const ENEMIES = [
 	["sword", -2200, 380, 120],
 	["sword", -1200, 380, 140],
 	["sword", -2050, 520, 80],     # Sunken Hollow
-	["sword", 2120, 290, 70],      # Thorn Rise, after Sable's lesson
+	["sword", 2120, 290, 70],      # Thorn Rise
 	["archer", 3680, 130, 0],      # Hollow Spire: guards Jump Platform 2 (land on it!)
 	["archer", 4262, 98, 0],       # The Breach pair: archer above...
 	["sword", 4120, 170, 60],      # ...and a sword fighter below
@@ -112,11 +112,6 @@ const CHESTS = [
 const CHECKPOINTS = [
 	[-1300, 380],   # middle of the Forgotten Paths
 	[6600, 250],    # Warden's Approach (the final checkpoint before the Warden)
-]
-
-# NPCS: [name, Kenney character number, x, floor top]
-const NPCS = [
-	["PIP", 12, -3070, 380],
 ]
 
 # SECRETS: [left, top, right, bottom, covered?]. Covered ones are hidden under darkness
@@ -165,5 +160,5 @@ func _ready() -> void:
 	build({
 		"blocks": BLOCKS, "barriers": BARRIERS, "restyle": RESTYLE, "props": PROPS,
 		"spikes": SPIKES, "enemies": ENEMIES, "chests": CHESTS, "checkpoints": CHECKPOINTS,
-		"npcs": NPCS, "secrets": SECRETS, "signs": SIGNS, "crystals": CRYSTALS, "regions": REGIONS,
+		"secrets": SECRETS, "signs": SIGNS, "crystals": CRYSTALS, "regions": REGIONS,
 	})

@@ -29,9 +29,8 @@ func _initialize() -> void:
 	await _test_chests_and_rewards()
 	await _test_warden_and_portal()
 	await _test_special()
-	await _test_npcs()
 	await _test_pause()
-	await _test_lessons()
+	await _test_death_powers()
 	await _test_tutorial()
 	await _test_save_and_level_select()
 	await _test_menu()
@@ -480,6 +479,8 @@ func _test_chests_and_rewards() -> void:
 	level.player.has_shield = false
 	level.player.speed_boost_timer = 0.0
 	level.lives = 5
+	level.pad_unlocked = false   # that death unlocked the pad
+	level.player.dash_unlocked = false
 	var picks = {}
 	for i in 300:
 		picks[chest.pick_reward(level)] = true
@@ -677,46 +678,20 @@ func _test_special() -> void:
 	_check("Soul Strike: only 15 presses does nothing (still 2 hearts)", warden_now().health == 2 and not paused)
 
 
-func _test_npcs() -> void:
-	await _fresh(Vector2(1580, 367))
-	level.pad_unlocked = true
-	var npc = level.get_node("Npcs/NpcSable")
-	_check("NPC: '!' shows before you talk, prompt shows when close", npc.get_node("Alert").visible and npc.get_node("Prompt").visible)
-	await _tap(KEY_E)
-	_check("NPC: E next to an NPC shows its first line (and places no pad)",
-		npc.get_node("Bubble").visible and npc.line_index == 0 and level.pads_remaining == 3)
-	for i in npc.lines.size() - 1:
-		await _tap(KEY_E)
-	_check("NPC: E goes through every line", npc.line_index == npc.lines.size() - 1)
-	await _tap(KEY_E)
-	_check("NPC: E after the last line closes the bubble", not npc.get_node("Bubble").visible and not npc.get_node("Alert").visible)
-	await _tap(KEY_E)
-	level.player.global_position = Vector2(1500, 367)
+# Level 1 has no teachers: each death unlocks the next power, and a new lantern gives back extra lost lives
+func _test_death_powers() -> void:
+	await _fresh(Vector2(300, 367))
+	_check("Level 1: no NPCs and no key hints", not level.has_node("Npcs") and not level.has_node("Hints"))
+	for power in ["pad", "double jump", "dash"]:
+		level._lose_life()
+		await _after_death()
+	_check("Deaths 1, 2, 3 unlock the pad, double jump and dash (2 lives left)",
+		level.pad_unlocked and level.player.double_jump_unlocked and level.player.dash_unlocked and level.lives == 2)
+	level.lives = 1
+	var lantern = level.get_node("Checkpoints").get_children().filter(func(c): return not c.get_node("Glow").enabled)[0]
+	level.player.global_position = lantern.global_position
 	await _frames(5)
-	_check("NPC: walking away closes the bubble", not npc.get_node("Bubble").visible and level.pads_remaining == 3)
-	var all_talk = level.get_node("Npcs").get_children().all(func(n): return n.lines.size() >= 2)
-	_check("NPC: all 8 NPCs are there, and every one has real lines (not 'Hello')",
-		level.get_node("Npcs").get_child_count() == 8 and not level.has_node("Signs") and all_talk)
-
-
-# Lessons: powers unlock where their NPC teaches them, and lives top up at each teacher
-func _test_lessons() -> void:
-	await _fresh(Vector2(1000, 367))  # spike garden, before Sable
-	level._lose_life()
-	await _after_death()
-	_check("Lessons: dying before reaching Sable unlocks nothing", level.deaths == 1 and not level.pad_unlocked)
-
-	# The example: died twice before Tomas (3 lives left), Bounce Pad already unlocked
-	await _fresh(Vector2(2300, 290))
-	level.lesson = 1
-	level.pad_unlocked = true
-	level.lives = 3
-	level.player.global_position = Vector2(2365, 290)  # walk up to Tomas
-	await _frames(5)
-	_check("Lessons: reaching Tomas with 3 lives tops you up to 4", level.lesson == 2 and level.lives == 4)
-	level._lose_life()
-	await _after_death()
-	_check("Lessons: then one death there unlocks Double Jump", level.player.double_jump_unlocked and level.lives == 3)
+	_check("A new lantern gives back extra lost lives (up to 2 with all 3 powers)", level.lives == 2)
 
 
 func _test_pause() -> void:

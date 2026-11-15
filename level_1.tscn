@@ -7,7 +7,6 @@
 [ext_resource type="Texture2D" path="res://assets/Deep-Night/Tiles-and-Enemies.png" id="5_rka8t"]
 [ext_resource type="Texture2D" path="res://assets/Deep-Night/Tiles-and-Enemies-transparent.png" id="7_sof0w"]
 [ext_resource type="PackedScene" path="res://checkpoint.tscn" id="8_ggavl"]
-[ext_resource type="PackedScene" path="res://npc.tscn" id="8_gjkv5"]
 [ext_resource type="Texture2D" path="res://assets/kenney_pixel-platformer/Tiles/Characters/tile_0000.png" id="9_00ld1"]
 [ext_resource type="PackedScene" path="res://warden.tscn" id="9_ubhxj"]
 [ext_resource type="Texture2D" path="res://assets/kenney_pixel-platformer/Tiles/Characters/tile_0009.png" id="10_3qmij"]
@@ -1174,68 +1173,6 @@ scale = Vector2(2, 2)
 sprite_frames = SubResource("SpriteFrames_ofxyu")
 autoplay = "default"
 
-[node name="Hints" type="Node2D" parent="." unique_id=181942634]
-position = Vector2(-3600, 0)
-
-[node name="KeyA" type="Label" parent="Hints" unique_id=1768543693]
-offset_left = 96.0
-offset_top = 396.0
-theme_override_styles/normal = SubResource("StyleBoxFlat_key")
-theme_override_font_sizes/font_size = 8
-theme_override_colors/font_color = Color(0.84, 0.9, 1, 1)
-text = "A"
-
-[node name="KeyD" type="Label" parent="Hints" unique_id=1541262659]
-offset_left = 112.0
-offset_top = 396.0
-theme_override_styles/normal = SubResource("StyleBoxFlat_key")
-theme_override_font_sizes/font_size = 8
-theme_override_colors/font_color = Color(0.84, 0.9, 1, 1)
-text = "D"
-
-[node name="Move" type="Label" parent="Hints" unique_id=3550812]
-offset_left = 130.0
-offset_top = 397.0
-theme_override_font_sizes/font_size = 8
-theme_override_colors/font_color = Color(0.84, 0.9, 1, 0.85)
-theme_override_colors/font_outline_color = Color(0.03, 0.02, 0.05, 1)
-theme_override_constants/outline_size = 3
-text = "MOVE"
-
-[node name="KeySpace" type="Label" parent="Hints" unique_id=1135604818]
-offset_left = 282.0
-offset_top = 396.0
-theme_override_styles/normal = SubResource("StyleBoxFlat_key")
-theme_override_font_sizes/font_size = 8
-theme_override_colors/font_color = Color(0.84, 0.9, 1, 1)
-text = "SPACE"
-
-[node name="Jump" type="Label" parent="Hints" unique_id=1753346669]
-offset_left = 316.0
-offset_top = 397.0
-theme_override_font_sizes/font_size = 8
-theme_override_colors/font_color = Color(0.84, 0.9, 1, 0.85)
-theme_override_colors/font_outline_color = Color(0.03, 0.02, 0.05, 1)
-theme_override_constants/outline_size = 3
-text = "JUMP"
-
-[node name="KeyEsc" type="Label" parent="Hints" unique_id=2047212639]
-offset_left = 492.0
-offset_top = 396.0
-theme_override_styles/normal = SubResource("StyleBoxFlat_key")
-theme_override_font_sizes/font_size = 8
-theme_override_colors/font_color = Color(0.84, 0.9, 1, 1)
-text = "ESC"
-
-[node name="Pause" type="Label" parent="Hints" unique_id=262650021]
-offset_left = 516.0
-offset_top = 397.0
-theme_override_font_sizes/font_size = 8
-theme_override_colors/font_color = Color(0.84, 0.9, 1, 0.85)
-theme_override_colors/font_outline_color = Color(0.03, 0.02, 0.05, 1)
-theme_override_constants/outline_size = 3
-text = "PAUSE"
-
 [node name="Mood" type="Node2D" parent="." unique_id=913910862]
 
 [node name="Darkness" type="CanvasModulate" parent="Mood" unique_id=531835111]
@@ -1671,43 +1608,6 @@ position = Vector2(4450, 157)
 
 [node name="CP4_Arena" parent="Checkpoints" unique_id=2001611605 instance=ExtResource("8_ggavl")]
 position = Vector2(7096, 367)
-
-[node name="Npcs" type="Node2D" parent="." unique_id=1578149620]
-
-[node name="NpcMira" parent="Npcs" unique_id=1327252071 instance=ExtResource("8_gjkv5")]
-position = Vector2(-3380, 380)
-npc_name = "MIRA"
-look = ExtResource("9_00ld1")
-
-[node name="NpcOren" parent="Npcs" unique_id=1658754635 instance=ExtResource("8_gjkv5")]
-position = Vector2(-3160, 380)
-npc_name = "DR. OREN"
-look = ExtResource("10_3qmij")
-
-[node name="NpcSable" parent="Npcs" unique_id=1291165720 instance=ExtResource("8_gjkv5")]
-position = Vector2(1560, 380)
-npc_name = "SABLE"
-look = ExtResource("12_lfy8a")
-
-[node name="NpcTomas" parent="Npcs" unique_id=1531567762 instance=ExtResource("8_gjkv5")]
-position = Vector2(2370, 290)
-npc_name = "TOMAS"
-look = ExtResource("13_ethxx")
-
-[node name="NpcIvy" parent="Npcs" unique_id=1319954975 instance=ExtResource("8_gjkv5")]
-position = Vector2(4370, 170)
-npc_name = "IVY"
-look = ExtResource("14_3o2xh")
-
-[node name="NpcHarrow" parent="Npcs" unique_id=40792182 instance=ExtResource("8_gjkv5")]
-position = Vector2(5490, 170)
-npc_name = "OLD HARROW"
-look = ExtResource("15_duihb")
-
-[node name="NpcRhea" parent="Npcs" unique_id=818958165 instance=ExtResource("8_gjkv5")]
-position = Vector2(6090, 170)
-npc_name = "RHEA"
-look = ExtResource("16_b6mmh")
 
 [node name="Decor2" type="Node2D" parent="." unique_id=1839799730]
 z_index = -1

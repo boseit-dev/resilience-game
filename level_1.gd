@@ -17,10 +17,6 @@ const BRIGHT = Color("#E8F5FF")
 const GLOW = Color("#83D9FF")
 const DIM = Color("#394256")
 
-# Walking past one of these NPCs starts their lesson: your next death unlocks that power.
-# 1 = Bounce Pad, 2 = Double Jump, 3 = Dash, 4 = Rhea (just a lives top-up before the boss)
-const LESSONS = {"SABLE": 1, "TOMAS": 2, "IVY": 3, "RHEA": 4}
-
 const REWARD_TEXT = {
 	"pad": "+1 BOUNCE PAD",
 	"heart": "+1 LIFE",
@@ -34,7 +30,7 @@ var shown_lives = MAX_LIVES   # what the HUD shows (to pop the mask of a lost li
 var deaths = 0
 var pads_remaining = MAX_PADS
 var pad_unlocked = false
-var lesson = 0
+var death_powers = true      # each death unlocks the next power (the tutorial turns this off)
 var respawning = false
 var respawn_grace = 0.0
 var restart_armed = false     # R pressed once; press again within 2 s to restart
@@ -75,7 +71,6 @@ func _process(delta: float) -> void:
 		player.visible = respawn_grace <= 0.0 or int(respawn_grace * 12.0) % 2 == 0
 	if player.global_position.y > 900:
 		_lose_life()
-	_check_lessons()
 	_update_boost_label()
 
 
@@ -117,7 +112,7 @@ func _create_hud() -> void:
 	powers.add_theme_constant_override("separation", 6)
 	hud_layer.add_child(powers)
 	power_rows.append(_power_row(powers, "E", "BOUNCE PAD"))
-	power_rows.append(_power_row(powers, "SPACE", "DOUBLE JUMP  ·  IN MID-AIR"))
+	power_rows.append(_power_row(powers, "SPACE", "DOUBLE JUMP"))
 	power_rows.append(_power_row(powers, "SHIFT", "DASH"))
 	pad_counter = power_rows[0].get_child(1)
 	boost_label = _label("", 13, Color("#FFE08A"), powers)
@@ -324,16 +319,6 @@ func give_reward(reward: String) -> void:
 	_update_hud()
 
 
-# ---------- lessons ----------
-
-func _check_lessons() -> void:
-	for npc in $Npcs.get_children():
-		var number = LESSONS.get(npc.npc_name, 0)
-		if number > lesson and player.global_position.x > npc.global_position.x - 40:
-			lesson = number
-			_top_up_lives()
-
-
 # A perfect run loses one life per power, so give back any extra lives lost so far
 func _top_up_lives() -> void:
 	var powers = int(pad_unlocked) + int(player.double_jump_unlocked) + int(player.dash_unlocked)
@@ -360,16 +345,16 @@ func _lose_life() -> void:
 		return
 	Sfx.play("death")
 
-	# Dying unlocks the power of the lesson you're on
-	if lesson >= 1 and not pad_unlocked:
+	# Each death unlocks the next power you don't have yet
+	if death_powers and not pad_unlocked:
 		pad_unlocked = true
-		_unlock("BOUNCE PAD UNLOCKED  ·  PRESS E")
-	elif lesson >= 2 and not player.double_jump_unlocked:
+		_unlock("BOUNCE PAD UNLOCKED")
+	elif death_powers and not player.double_jump_unlocked:
 		player.double_jump_unlocked = true
-		_unlock("DOUBLE JUMP UNLOCKED  ·  JUMP IN MID-AIR")
-	elif lesson >= 3 and not player.dash_unlocked:
+		_unlock("DOUBLE JUMP UNLOCKED")
+	elif death_powers and not player.dash_unlocked:
 		player.dash_unlocked = true
-		_unlock("DASH UNLOCKED  ·  PRESS SHIFT")
+		_unlock("DASH UNLOCKED")
 
 	var fade = create_tween()
 	fade.tween_interval(0.5)
@@ -494,8 +479,9 @@ func _on_checkpoint_body_entered(body: Node2D, checkpoint: Area2D) -> void:
 	if body != player:
 		return
 	spawn_position = checkpoint.global_position
-	if not checkpoint.get_node("Glow").enabled:
+	if not checkpoint.get_node("Glow").enabled:   # first time you light this lantern
 		Sfx.play("checkpoint")
+		_top_up_lives()
 	checkpoint.get_node("Glow").enabled = true
 	checkpoint.get_node("Flame").modulate = GLOW
 

@@ -30,6 +30,7 @@ var complete_screen: Control
 
 
 func _ready() -> void:
+	death_powers = false   # here each power switches on at its section instead
 	super._ready()
 	Sfx.play_music(CALM_MUSIC)   # soft music for training
 	# The camera stops at the outer edges of the rock at both ends (tutorial_map.gd), so you never see empty space

@@ -5,13 +5,12 @@ extends Node2D
 # A map script lists its ground, enemies, chests and so on in tables, then calls
 #   build({"blocks": BLOCKS, "enemies": ENEMIES, ...})
 # Keys it understands: blocks, barriers, restyle, props, spikes, enemies, chests,
-# checkpoints, npcs, secrets, signs, crystals, regions (all optional).
+# checkpoints, secrets, signs, crystals, regions (all optional).
 # The level scene must have DarkGroundArt, FrostEdges, Decor (with CrystalGlow),
-# Hazards/SpikeGarden1, Npcs and Mood/Darkness: they are copied for the new parts.
+# Hazards/SpikeGarden1 and Mood/Darkness: they are copied for the new parts.
 
 const CHECKPOINT = preload("res://checkpoint.tscn")
 const BARRIER = preload("res://wooden_barrier.gd")
-const NPC = preload("res://npc.tscn")
 const CHEST = preload("res://chest.tscn")
 const ENEMY_SCENES = {
 	"sword": preload("res://enemies/sword_fighter.tscn"),
@@ -81,12 +80,6 @@ func build(map: Dictionary) -> void:
 		enemy.position = Vector2(e[1], e[2])   # set before add_child: it remembers its start
 		enemy.patrol_distance = e[3]
 		add_child(enemy)
-	for n in map.get("npcs", []):
-		var npc = NPC.instantiate()
-		npc.npc_name = n[0]
-		npc.look = load("res://assets/kenney_pixel-platformer/Tiles/Characters/tile_%04d.png" % n[1])
-		npc.position = Vector2(n[2], n[3])
-		level.get_node("Npcs").add_child(npc)
 
 
 func _process(_delta: float) -> void:
