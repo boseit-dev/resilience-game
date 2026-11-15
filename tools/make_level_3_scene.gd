@@ -33,7 +33,7 @@ func _initialize() -> void:
 	portal.scale = Vector2(1.6, 1.6)
 
 	var intro = level.get_node("Intro")
-	intro.text = "THE SCIENTIST WAS HERE\nTHE CORE LIES BELOW\nTHE ARCHITECT WAKES\nNOBODY LEAVES"
+	intro.text = "DR. VALE CAME THIS WAY\nTHE CORE LIES BELOW\nTHE ARCHITECT WAKES\nNOBODY LEAVES"
 	intro.title = "CHAPTER III  —  THE FRACTURED CAVERNS"
 	intro.text_color = Color(1.4, 1.1, 2.0)
 	level.move_child(intro, -1)

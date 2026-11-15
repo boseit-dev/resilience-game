@@ -81,6 +81,21 @@ func _process(delta: float) -> void:
 	if player.global_position.y > 900:
 		_lose_life()
 	_update_boost_label()
+	_update_boss_bar()
+
+
+# The boss bar at the top: name and health of the boss you're fighting
+var boss_bar: Control
+var boss_fill: ColorRect
+var boss_title: Label
+
+func _update_boss_bar() -> void:
+	var bosses = get_tree().get_nodes_in_group("boss").filter(func(b): return b.awake and b.health > 0)
+	boss_bar.visible = not bosses.is_empty()
+	if boss_bar.visible:
+		boss_title.text = bosses[0].title
+		var target = 300.0 * bosses[0].health / float(bosses[0].max_health)
+		boss_fill.size.x = lerpf(boss_fill.size.x, target, 0.15)   # slides down when hit
 
 
 # ---------- HUD ----------
@@ -94,6 +109,32 @@ func _create_hud() -> void:
 	effects_layer.layer = 2
 	effects_layer.follow_viewport_enabled = true
 	add_child(effects_layer)
+
+	boss_bar = Control.new()   # centred near the bottom, hidden until a boss wakes
+	boss_bar.anchor_left = 0.5
+	boss_bar.anchor_right = 0.5
+	boss_bar.anchor_top = 1.0
+	boss_bar.anchor_bottom = 1.0
+	boss_bar.position = Vector2(-150, -52)
+	boss_bar.visible = false
+	hud_layer.add_child(boss_bar)
+	boss_title = Label.new()
+	boss_title.add_theme_font_override("font", FONT)
+	boss_title.add_theme_font_size_override("font_size", 13)
+	boss_title.add_theme_color_override("font_color", Color("#E8E2FF"))
+	boss_title.size = Vector2(300, 18)
+	boss_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_bar.add_child(boss_title)
+	var back = ColorRect.new()
+	back.color = Color(0.05, 0.03, 0.08, 0.85)
+	back.position = Vector2(-2, 20)
+	back.size = Vector2(304, 10)
+	boss_bar.add_child(back)
+	boss_fill = ColorRect.new()
+	boss_fill.color = Color(0.85, 0.25, 0.4)
+	boss_fill.position = Vector2(0, 22)
+	boss_fill.size = Vector2(300, 6)
+	boss_bar.add_child(boss_fill)
 
 	# A soft dark corner so the HUD is readable
 	var shade = TextureRect.new()
@@ -492,6 +533,26 @@ func _restart_after_game_over() -> void:
 		get_tree().reload_current_scene()
 
 
+# A one-off puff of sparkles (lanterns)
+func _burst(at: Vector2, color: Color) -> void:
+	var p = CPUParticles2D.new()
+	p.position = at
+	p.one_shot = true
+	p.explosiveness = 0.9
+	p.amount = 24
+	p.lifetime = 0.8
+	p.spread = 180.0
+	p.initial_velocity_min = 40.0
+	p.initial_velocity_max = 110.0
+	p.gravity = Vector2(0, -40)
+	p.scale_amount_min = 1.0
+	p.scale_amount_max = 2.5
+	p.color = color
+	add_child(p)
+	p.emitting = true
+	p.finished.connect(p.queue_free)
+
+
 # ---------- checkpoints and the boss ----------
 
 func _on_checkpoint_body_entered(body: Node2D, checkpoint: Area2D) -> void:
@@ -501,6 +562,11 @@ func _on_checkpoint_body_entered(body: Node2D, checkpoint: Area2D) -> void:
 	if not checkpoint.get_node("Glow").enabled:   # first time you light this lantern
 		Sfx.play("checkpoint")
 		_top_up_lives()
+		_burst(checkpoint.global_position + Vector2(0, -14), GLOW)
+		var flame = checkpoint.get_node("Flame")
+		var pop = create_tween()
+		pop.tween_property(flame, "scale", flame.scale * 1.8, 0.12)
+		pop.tween_property(flame, "scale", flame.scale, 0.3)
 	checkpoint.get_node("Glow").enabled = true
 	checkpoint.get_node("Flame").modulate = GLOW
 

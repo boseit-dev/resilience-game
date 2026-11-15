@@ -76,6 +76,8 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if defeated:
 		return
+	if level and absf(level.player.global_position.x - global_position.x) > 1100.0:
+		return   # far off screen: wait (saves work, mostly in the browser)
 	hurt_cooldown = max(0.0, hurt_cooldown - delta)
 	stomp_cooldown = max(0.0, stomp_cooldown - delta)
 	if not is_on_floor():

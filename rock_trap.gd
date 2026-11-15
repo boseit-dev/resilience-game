@@ -16,6 +16,9 @@ func _physics_process(delta: float) -> void:
 	t += delta
 	if t >= every:
 		t = 0.0
+		var player = get_tree().current_scene.get_node_or_null("Player")
+		if player and absf(player.global_position.x - position.x) > 900.0:
+			return   # nobody to see it
 		drop(get_parent(), position.x, floor_y, WARN, 1.0)
 
 
@@ -54,6 +57,6 @@ static func drop(parent: Node, x: float, floor_top: float, warn: float, size: fl
 			hit[0] = true
 			level.enemy_hit_player(),
 		floor_top - 300.0, floor_top - 7.0 * size, 0.35).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
-	steps.tween_callback(func(): Sfx.play("slam", 1.6 / size))
+	steps.tween_callback(func(): Sfx.play_near("slam", Vector2(x, floor_top), 1.6 / size))
 	steps.tween_property(art, "modulate:a", 0.0, 0.25)
 	steps.tween_callback(rock.queue_free)

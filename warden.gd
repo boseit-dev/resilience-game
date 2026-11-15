@@ -49,6 +49,7 @@ var hop_timer: float = HOP_EVERY
 var hop_speed: float = 0.0
 var hop_height: float = 0.0
 var max_health: int
+var title = "THE HOLLOW WARDEN"   # shown on the boss health bar
 var charge_timer: float = CHARGE_EVERY
 var warn_timer: float = 0.0
 var charging: bool = false

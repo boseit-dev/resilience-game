@@ -66,6 +66,45 @@ func _key(a: Key, b: Key, c: Key = KEY_NONE) -> bool:
 	return Input.is_physical_key_pressed(a) or Input.is_physical_key_pressed(b) or (c != KEY_NONE and Input.is_physical_key_pressed(c))
 
 
+var was_on_floor = true
+var fall_speed = 0.0
+
+
+func _land_effect() -> void:
+	var dust = CPUParticles2D.new()
+	dust.position = Vector2(0, 11)
+	dust.one_shot = true
+	dust.explosiveness = 1.0
+	dust.amount = 8
+	dust.lifetime = 0.35
+	dust.direction = Vector2(0, -1)
+	dust.spread = 80.0
+	dust.initial_velocity_min = 20.0
+	dust.initial_velocity_max = 50.0
+	dust.gravity = Vector2(0, 120)
+	dust.color = Color(0.8, 0.85, 1.0, 0.6)
+	add_child(dust)
+	dust.emitting = true
+	dust.finished.connect(dust.queue_free)
+	var squash = create_tween()
+	squash.tween_property($Sprite2D, "scale", Vector2(1.25, 0.8), 0.06)
+	squash.tween_property($Sprite2D, "scale", Vector2.ONE, 0.12)
+
+
+# A fading copy of the scientist left behind while dashing
+func _afterimage() -> void:
+	var ghost = Sprite2D.new()
+	ghost.texture = $Sprite2D.texture
+	ghost.flip_h = $Sprite2D.flip_h
+	ghost.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ghost.global_position = $Sprite2D.global_position
+	ghost.modulate = Color(0.6, 0.85, 1.6, 0.6)
+	get_parent().add_child(ghost)
+	var fade = ghost.create_tween()
+	fade.tween_property(ghost, "modulate:a", 0.0, 0.25)
+	fade.tween_callback(ghost.queue_free)
+
+
 func _physics_process(delta: float) -> void:
 	var jump_pressed = _key(KEY_W, KEY_UP, KEY_SPACE)
 	var dash_pressed = Input.is_key_pressed(KEY_SHIFT)
@@ -74,6 +113,13 @@ func _physics_process(delta: float) -> void:
 	if direction != 0:
 		facing_direction = direction
 		$Sprite2D.flip_h = facing_direction > 0  # the sprite is drawn facing left
+
+	# Landing: a puff of dust and a little squash after a real fall
+	if is_on_floor() and not was_on_floor and fall_speed > 260.0:
+		_land_effect()
+	was_on_floor = is_on_floor()
+	if not was_on_floor:
+		fall_speed = velocity.y
 
 	# Restore extra jump when landing
 	if is_on_floor():
@@ -115,6 +161,8 @@ func _physics_process(delta: float) -> void:
 	# Dash movement
 	if dash_timer > 0.0:
 		dash_timer -= delta
+		if Engine.get_physics_frames() % 3 == 0:
+			_afterimage()
 		velocity.x = facing_direction * DASH_SPEED
 		velocity.y = 0.0
 		move_and_slide()

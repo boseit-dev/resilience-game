@@ -78,6 +78,7 @@ func _ready() -> void:
 	create_tween().tween_property(fade, "color:a", 0.0, 1.2)  # fade in from black
 
 	_show_page("main")
+	Sfx.level_music = Sfx.MUSIC   # the menu theme, not the last level's music
 	Sfx.start_ambience()
 	get_viewport().size_changed.connect(_fit_to_window)
 	_fit_to_window()

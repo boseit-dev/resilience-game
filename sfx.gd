@@ -142,7 +142,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS  # sounds and music keep going while the game is paused
 
 	# A few players so sounds can overlap (death + unlock at the same time)
-	for i in 8:
+	for i in 16:
 		var p = AudioStreamPlayer.new()
 		p.bus = "Sounds"  # volume set in Options (settings.gd)
 		add_child(p)
@@ -163,6 +163,13 @@ func _ready() -> void:
 
 
 # pitch (optional) multiplies the sound's normal pitch, e.g. a rising tone for each press
+# Hazards far away stay quiet (and leave the sound players free for the player's own sounds)
+func play_near(sound_name: String, where: Vector2, pitch: float = 1.0) -> void:
+	var player = get_tree().current_scene.get_node_or_null("Player")
+	if player == null or player.global_position.distance_to(where) < 700.0:
+		play(sound_name, pitch)
+
+
 func play(sound_name: String, pitch: float = 1.0) -> void:
 	for p in players:
 		if not p.playing:

@@ -76,7 +76,7 @@ func _physics_process(delta: float) -> void:
 	is_on = cycle >= off_time
 	var warning = not is_on and cycle >= off_time - WARNING
 	if is_on and not was_on:
-		Sfx.play("armour_hit", 1.6)
+		Sfx.play_near("armour_hit", global_position, 1.6)
 		for body in get_overlapping_bodies():   # standing in it when it turns on counts too
 			_on_body_entered(body)
 	_draw_beam(is_on, warning)

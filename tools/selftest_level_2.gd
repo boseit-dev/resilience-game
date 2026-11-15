@@ -332,11 +332,7 @@ func _test_boss() -> void:
 		root.get_node("Sfx").music_target.resource_path.ends_with("victory_theme.ogg") and zappers.all(func(z): return not z.active)
 		and level.get_node("ExitPortal").is_open)
 	level.player.global_position = level.get_node("ExitPortal").global_position + Vector2(0, -13)
-	for i in 120:
-		await physics_frame
-		if current_scene != level and current_scene != null:
-			break
-	await _frames(5)
+	await _wait_scene_change(level)
 	_check("Portal: takes you on to Level 3", current_scene != null and current_scene.name == "Level3")
 	_use_test_save()
 

@@ -843,7 +843,7 @@ core_spot = Vector2(14500, 150)
 
 [node name="Intro" type="Node" parent="." unique_id=2015666793]
 script = ExtResource("12_g005c")
-text = "THE SCIENTIST WAS HERE
+text = "DR. VALE CAME THIS WAY
 THE CORE LIES BELOW
 THE ARCHITECT WAKES
 NOBODY LEAVES"

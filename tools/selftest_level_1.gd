@@ -628,8 +628,7 @@ func _test_warden_and_portal() -> void:
 	await _frames(150)
 	_check("Level music returns after the Warden dies", root.get_node("Sfx").music.stream.resource_path.ends_with("level_1_theme.ogg"))
 	level.player.global_position = portal.global_position + Vector2(0, -13)
-	for i in 60:
-		await process_frame
+	await _wait_scene_change(level)
 	_check("The Level 1 portal takes you to Level 2", current_scene.name == "Level2")
 	_use_test_save()
 
@@ -1269,6 +1268,14 @@ func _leap(edge_x: float, stop_x: float, double_jump: bool, dash_mode: String) -
 	_key(KEY_RIGHT, false)
 	await _frames(10)
 	await _after_death()
+
+
+# Wait (real time) until a portal's fade has changed the scene
+func _wait_scene_change(old, seconds := 7.0) -> void:   # (old may already be freed)
+	var end = Time.get_ticks_msec() + int(seconds * 1000.0)
+	while Time.get_ticks_msec() < end and (current_scene == null or (is_instance_valid(old) and current_scene == old)):
+		await process_frame
+	await _frames(5)
 
 
 # Wait for the death animation and respawn to finish

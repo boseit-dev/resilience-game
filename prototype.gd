@@ -23,8 +23,30 @@ var phase = 1
 var bolt_timer = 2.0
 
 
+var announced = false
+var sparks: CPUParticles2D   # damage sparks from phase 2
+
+
 func _ready() -> void:
 	super._ready()
+	title = "UNIT 7  ·  THE FAILED PROTOTYPE"
+	hearts.position.y = -66   # above the big robot, not over its head
+	sparks = CPUParticles2D.new()
+	sparks.emitting = false
+	sparks.amount = 14
+	sparks.lifetime = 0.6
+	sparks.position = Vector2(0, -30)
+	sparks.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	sparks.emission_rect_extents = Vector2(14, 14)
+	sparks.direction = Vector2(0, -1)
+	sparks.spread = 70.0
+	sparks.initial_velocity_min = 40.0
+	sparks.initial_velocity_max = 90.0
+	sparks.gravity = Vector2(0, 260)
+	sparks.scale_amount_min = 1.0
+	sparks.scale_amount_max = 2.0
+	sparks.color = Color(1.6, 1.4, 0.6)
+	add_child(sparks)
 	# A big Kenney robot instead of the Warden's sprite
 	var frames = SpriteFrames.new()
 	for n in [21, 22]:
@@ -42,8 +64,12 @@ func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 	if not awake or health <= 0:
 		return
-	if phase == 3:   # overload: the core flickers
+	if not announced:
+		announced = true
+		get_tree().current_scene._show_banner("PROTOTYPE:  ACTIVATION")
+	if phase == 3:   # overload: the core flickers and the body shudders
 		$Glow.energy = 0.7 + 0.6 * absf(sin(Time.get_ticks_msec() / 90.0))
+		art.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1))
 	bolt_timer -= delta
 	if bolt_timer <= 0.0 and safe_timer <= 0.0 and attack_timer <= 0.0 and not charging and warn_timer <= 0.0:
 		bolt_timer = BOLT_EVERY[phase]
@@ -82,6 +108,8 @@ func _take_hit(player: Node2D) -> void:
 		return
 	phase = new_phase
 	speed += 30.0
+	art.self_modulate = Color(0.75, 0.62, 0.62) if phase == 2 else Color(0.6, 0.45, 0.45)   # scorched
+	sparks.emitting = true
 	Sfx.music.pitch_scale = MUSIC_PITCH[phase]
 	get_tree().current_scene._show_banner("PROTOTYPE:  " + ["", "", "SYSTEM FAILURE", "OVERLOAD"][phase])
 	if phase == 2:

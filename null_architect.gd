@@ -52,6 +52,7 @@ var rings: Array[Line2D] = []
 
 func _ready() -> void:
 	super._ready()
+	title = "THE NULL ARCHITECT"
 	art.scale = Vector2(8, 8)
 	art.position = Vector2(0, -32)
 	modulate = LOOK
@@ -147,7 +148,7 @@ func _emerge() -> void:
 		for r in rings:
 			r.show()
 		_music(1)
-		_banner("THE NULL ARCHITECT"))
+		_banner("THE NULL ARCHITECT  ·  THE GUARDIAN AWAKENS"))
 
 
 # Rear up glowing violet, slam, shockwaves run both ways along the floor

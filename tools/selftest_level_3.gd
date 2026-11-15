@@ -126,11 +126,7 @@ func _test_l2_to_l3() -> void:
 	await _fresh(Vector2(9700, 368), false, L2)
 	level.get_node("ExitPortal").open()
 	level.player.global_position = level.get_node("ExitPortal").global_position + Vector2(0, -13)
-	for i in 120:
-		await physics_frame
-		if current_scene != level and current_scene != null:
-			break
-	await _frames(5)
+	await _wait_scene_change(level)
 	_check("Level 2 portal leads to Level 3", current_scene != null and current_scene.name == "Level3")
 
 
@@ -473,11 +469,7 @@ func _test_l3_escape() -> void:
 		and absf(level.player.global_position.x - 14960) < 4)
 	await _place(Vector2(18500, 368))
 	await _walk_until(18610, 60)
-	for i in 120:
-		await physics_frame
-		if current_scene != level and current_scene != null:
-			break
-	await _frames(10)
+	await _wait_scene_change(level)
 	var save = root.get_node("SaveGame")
 	_check("Gateway: the story is saved as finished, the ending plays", current_scene.name == "Ending" and save.finished and save.completed.has(3))
 
