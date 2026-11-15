@@ -5,13 +5,25 @@ extends Node2D
 # A map script lists its ground, enemies, chests and so on in tables, then calls
 #   build({"blocks": BLOCKS, "enemies": ENEMIES, ...})
 # Keys it understands: blocks, barriers, restyle, props, spikes, enemies, chests,
-# checkpoints, secrets, signs, crystals, regions (all optional).
+# checkpoints, secrets, signs, crystals, regions, and for the lab levels:
+#   movers  [x, top, width, travel x, travel y, seconds]       moving platforms (moving_platform.gd)
+#   zappers [x, y, length, vertical?, on s, off s, delay, boss?]  timed electric beams (zapper.gd);
+#           boss = true: stays off until the boss switches it on
+#   doors   [x, floor top, height, [lever positions]]          a door that opens when every lever is touched
+#   lamps   [x, y, colour]                                     flickering lab lights
+#   npcs    [name, Kenney character number, x, floor top]      people (and terminals) you can talk to
+#   regions can have a 7th item: the music for that area
+# (all optional).
 # The level scene must have DarkGroundArt, FrostEdges, Decor (with CrystalGlow),
 # Hazards/SpikeGarden1 and Mood/Darkness: they are copied for the new parts.
 
 const CHECKPOINT = preload("res://checkpoint.tscn")
 const BARRIER = preload("res://wooden_barrier.gd")
 const CHEST = preload("res://chest.tscn")
+const MOVER = preload("res://moving_platform.gd")
+const ZAPPER = preload("res://zapper.gd")
+const DOOR = preload("res://lab_door.gd")
+const NPC = preload("res://npc.tscn")
 const ENEMY_SCENES = {
 	"sword": preload("res://enemies/sword_fighter.tscn"),
 	"archer": preload("res://enemies/archer.tscn"),
@@ -29,6 +41,7 @@ const STYLES = {
 	"violet": {"shift": 0, "tint": Color(0.85, 0.66, 1.0)},
 	"stone": {"stone": true, "tint": Color(0.82, 0.84, 0.9)},
 	"ember": {"stone": true, "tint": Color(1.0, 0.62, 0.55)},
+	"lab": {"stone": true, "tint": Color(0.58, 0.7, 0.95)},     # cold steel
 }
 
 const SHEET = preload("res://assets/Deep-Night/Tiles-and-Enemies-transparent.png")
@@ -40,6 +53,7 @@ const MUSHROOM = preload("res://assets/kenney_pixel-platformer/Tiles/tile_0128.p
 
 var level: Node
 var regions = []
+var lamps: Array[PointLight2D] = []
 var current_region = -1
 var seen_regions = {}
 var darkness_tween: Tween
@@ -79,12 +93,55 @@ func build(map: Dictionary) -> void:
 		var enemy = ENEMY_SCENES[e[0]].instantiate()
 		enemy.position = Vector2(e[1], e[2])   # set before add_child: it remembers its start
 		enemy.patrol_distance = e[3]
+		if e.size() > 4:   # a tougher lab version: more stomps, walks faster
+			enemy.health = e[4]
+			enemy.walk_speed *= 1.4
+			enemy.modulate = Color(1.15, 0.85, 0.85)
 		add_child(enemy)
+	for m in map.get("movers", []):
+		var mover = MOVER.new()
+		mover.position = Vector2(m[0], m[1])
+		mover.width = m[2]
+		mover.travel = Vector2(m[3], m[4])
+		mover.time = m[5]
+		add_child(mover)
+	for z in map.get("zappers", []):
+		var zapper = ZAPPER.new()
+		zapper.position = Vector2(z[0], z[1])
+		zapper.length = z[2]
+		zapper.vertical = z[3]
+		zapper.on_time = z[4]
+		zapper.off_time = z[5]
+		zapper.offset = z[6]
+		zapper.active = z.size() < 8 or not z[7]
+		if not zapper.active:
+			zapper.add_to_group("boss_zapper")
+		zapper.level = level
+		add_child(zapper)
+	for d in map.get("doors", []):
+		var door = DOOR.new()
+		door.position = Vector2(d[0], d[1])
+		door.height = d[2]
+		door.levers = d[3]
+		door.level = level
+		add_child(door)
+	for l in map.get("lamps", []):
+		_add_crystal(l[0], l[1], l[2])
+		lamps.append(get_child(get_child_count() - 2))   # the light just added (before its sparks)
+		lamps[-1].set_meta("energy", lamps[-1].energy)
+	for n in map.get("npcs", []):
+		var npc = NPC.instantiate()
+		npc.npc_name = n[0]
+		npc.look = load("res://assets/kenney_pixel-platformer/Tiles/Characters/tile_%04d.png" % n[1]) if n[1] is int else load(n[1])
+		npc.position = Vector2(n[2], n[3])
+		add_child(npc)
 
 
 func _process(_delta: float) -> void:
 	if level == null:
 		return
+	for lamp in lamps:   # broken lab lights: mostly on, now and then they stutter
+		lamp.energy = 0.15 if randf() < 0.04 else lamp.get_meta("energy")
 	var p = level.player.global_position
 	for i in regions.size():
 		var r = regions[i]
@@ -105,6 +162,8 @@ func _enter_region(i: int) -> void:
 	if r[0] != "" and not seen_regions.has(r[0]):
 		seen_regions[r[0]] = true
 		level._show_banner(r[0])
+	if r.size() > 6 and not get_tree().get_nodes_in_group("boss").any(func(b): return b.awake):
+		Sfx.play_music(r[6])
 
 
 # A solid box with Deep-Night tiles painted on it, in the block's style

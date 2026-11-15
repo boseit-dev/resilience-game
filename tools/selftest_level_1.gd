@@ -621,16 +621,17 @@ func _test_warden_and_portal() -> void:
 	if is_instance_valid(warden):
 		print("      warden health ", warden.health, " alpha ", warden.get_node("Art").modulate.a)
 	_check("Beating the Warden opens the portal", portal.is_open)
-	level.player.global_position = portal.global_position + Vector2(0, -13)
-	await _frames(10)
-	_check("Portal shows 'Level 2 coming soon' while level_2.tscn doesn't exist", portal.get_node("Message").visible)
 	var save = root.get_node("SaveGame")
 	_check("Beating the Warden saves: Level 1 done, Level 2 unlocked, 1 fragment, powers kept",
 		save.completed == [1] and save.unlocked_level == 2 and save.fragments == 1 and save.current_level == 2
 		and save.powers.size() == int(level.pad_unlocked) + int(level.player.double_jump_unlocked) + int(level.player.dash_unlocked))
-	_use_test_save()
 	await _frames(150)
 	_check("Level music returns after the Warden dies", root.get_node("Sfx").music.stream.resource_path.ends_with("level_1_theme.ogg"))
+	level.player.global_position = portal.global_position + Vector2(0, -13)
+	for i in 60:
+		await process_frame
+	_check("The Level 1 portal takes you to Level 2", current_scene.name == "Level2")
+	_use_test_save()
 
 
 # Soul Strike: after the 3rd stomp the game pauses and asks for 20 SPACE presses in 3 s
@@ -899,8 +900,9 @@ func _test_save_and_level_select() -> void:
 	save.complete_level(1, ["pad"])
 	menu = await _fresh_menu()
 	var resume = menu.pages["main"].get_child(0)
-	_check("Continue: still greyed out while Level 2 isn't built yet", resume.disabled == not ResourceLoader.exists("res://level_2.tscn"))
-	_check("Level Select: Level 2 shows as unlocked but not built yet", menu.pages["levels"].get_child(1).text.ends_with("Coming soon"))
+	_check("Continue: after Level 1 it is enabled (goes to Level 2)", not resume.disabled and save.current_level == 2)
+	_check("Level Select: Level 2 can be played, Level 3 is locked",
+		not menu.pages["levels"].get_child(1).disabled and menu.pages["levels"].get_child(2).text.ends_with("Locked"))
 	save.current_level = 1
 	menu = await _fresh_menu()
 	_check("Continue: with a save it's enabled and selected", not menu.pages["main"].get_child(0).disabled and root.gui_get_focus_owner().text == "Continue Game")

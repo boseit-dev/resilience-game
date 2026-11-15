@@ -31,8 +31,9 @@ var complete_screen: Control
 
 func _ready() -> void:
 	death_powers = false   # here each power switches on at its section instead
+	level_title = "TUTORIAL"
+	music = CALM_MUSIC     # soft music for training
 	super._ready()
-	Sfx.play_music(CALM_MUSIC)   # soft music for training
 	# The camera stops at the outer edges of the rock at both ends (tutorial_map.gd), so you never see empty space
 	var camera = player.get_node("Camera2D")
 	camera.limit_left = -700

@@ -3,8 +3,11 @@ extends Node2D
 # RESILIENCE - LEVEL 1 (the tutorial reuses this script too: tutorial.gd)
 # Lives, Bounce Pads, power unlocks, checkpoints, death, Game Over, chests and the HUD.
 
-const LEVEL_NUMBER = 1
 const MAX_LIVES = 5
+# Set per level in its .tscn (Inspector): every story level and the tutorial use this script
+@export var level_number = 1                       # for the story save (save_game.gd)
+@export var level_title = "LEVEL 1  ·  THE ARRIVAL"
+@export var music: AudioStream                     # empty = the Level 1 theme
 const MAX_PADS = 3
 const PAD_LAUNCH_SPEED = -520.0
 const RESPAWN_GRACE = 1.0      # seconds enemies can't hurt you after a respawn
@@ -57,10 +60,16 @@ func _ready() -> void:
 	_create_hud()
 	_update_hud()
 	add_child(preload("res://pause_menu.gd").new())
-	_show_banner("LEVEL 1  ·  THE ARRIVAL")
+	_show_banner(level_title)
+	if level_number > 1:   # Level 1 can't be beaten without all three powers, so later levels start with them
+		pad_unlocked = true
+		player.double_jump_unlocked = true
+		player.dash_unlocked = true
+		_update_hud()
+	Sfx.level_music = music if music else Sfx.MUSIC
 	Sfx.start_ambience()
-	if has_node("Warden"):
-		$Warden.defeated.connect(_on_boss_defeated)
+	for boss in get_tree().get_nodes_in_group("boss"):   # the Warden, the Failed Prototype
+		boss.defeated.connect(_on_boss_defeated.bind(boss))
 	for checkpoint in get_tree().get_nodes_in_group("checkpoint"):
 		checkpoint.body_entered.connect(_on_checkpoint_body_entered.bind(checkpoint))
 
@@ -487,7 +496,7 @@ func _on_checkpoint_body_entered(body: Node2D, checkpoint: Area2D) -> void:
 
 
 # The Warden is beaten: save the story, and a Gateway Fragment flies from it into the scientist
-func _on_boss_defeated() -> void:
+func _on_boss_defeated(boss: Node2D) -> void:
 	var kept = []
 	if pad_unlocked:
 		kept.append("pad")
@@ -495,12 +504,12 @@ func _on_boss_defeated() -> void:
 		kept.append("double_jump")
 	if player.dash_unlocked:
 		kept.append("dash")
-	SaveGame.complete_level(LEVEL_NUMBER, kept)
+	SaveGame.complete_level(level_number, kept)
 
 	var fragment = Polygon2D.new()
 	fragment.polygon = PackedVector2Array([Vector2(0, -9), Vector2(6, 0), Vector2(0, 9), Vector2(-6, 0)])
 	fragment.color = Color(1.6, 1.9, 2.2)
-	fragment.global_position = $Warden.global_position + Vector2(0, -30)
+	fragment.global_position = boss.global_position + Vector2(0, -30)
 	effects_layer.add_child(fragment)
 	var light = PointLight2D.new()
 	light.texture = _soft_dot()

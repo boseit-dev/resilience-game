@@ -14,3 +14,6 @@ His terms (soundcloud.com/adhesivewombat): free for non-commercial games/project
 games/projects, contact the artist first. Credit: Music: AdhesiveWombat - Night Shade.
 intro_theme.wav is "Juhani Junkala [Retro Game Music Pack] Title Screen.wav" from the same pack (CC0),
 downloaded 2026-11-15 from the page above, converted to mono 32 kHz WAV. Used in the intro cutscene.
+level_2_theme.ogg is "Juhani Junkala [Retro Game Music Pack] Level 2.wav" and victory_theme.ogg is
+"... Ending.wav", both from the same pack (CC0), downloaded 2026-11-15 from the page above and
+converted to Ogg Vorbis. Used in Level 2 (Forgotten Laboratories) and after its boss.

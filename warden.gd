@@ -62,6 +62,7 @@ var orb_texture: AtlasTexture
 
 
 func _ready() -> void:
+	add_to_group("boss")   # the level gives a Gateway Fragment when a boss is defeated
 	start_x = position.x
 	floor_y = position.y
 	max_health = health

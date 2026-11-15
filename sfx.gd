@@ -135,6 +135,7 @@ var ambience: AudioStreamPlayer
 var music: AudioStreamPlayer
 var music_fade: Tween
 var music_target: AudioStream  # the track playing, or fading in
+var level_music: AudioStream = MUSIC   # set by each level (level_1.gd)
 
 
 func _ready() -> void:
@@ -180,7 +181,7 @@ func start_ambience() -> void:
 
 
 func play_level_music() -> void:
-	play_music(MUSIC)
+	play_music(level_music)
 
 
 func play_boss_music() -> void:
@@ -200,6 +201,7 @@ func play_music(stream: AudioStream) -> void:
 	if music_target == stream:
 		return
 	music_target = stream
+	music.pitch_scale = 1.0   # the Prototype speeds its music up; any new track starts normal
 	if "loop" in stream:   # Ogg files loop here; WAV files loop through their import settings
 		stream.loop = true
 

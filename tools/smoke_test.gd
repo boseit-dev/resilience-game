@@ -2,7 +2,7 @@ extends SceneTree
 # Quick check that every main scene loads without errors (much faster than the full self-test).
 # Run:  godot --headless --path . --script tools/smoke_test.gd
 func _initialize() -> void:
-	for scene in ["res://level_1.tscn", "res://tutorial.tscn", "res://main_menu.tscn", "res://intro_cutscene.tscn"]:
+	for scene in ["res://level_1.tscn", "res://level_2.tscn", "res://tutorial.tscn", "res://main_menu.tscn", "res://intro_cutscene.tscn"]:
 		change_scene_to_file(scene)
 		for i in 30:
 			await process_frame

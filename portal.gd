@@ -37,6 +37,7 @@ func _on_body_entered(body: Node2D) -> void:
 	if ResourceLoader.exists(next_scene):
 		get_tree().call_deferred("change_scene_to_file", next_scene)
 	else:
+		$Message.text = next_scene.get_file().get_basename().replace("_", " ").to_upper() + " COMING SOON"
 		$Message.show()
 		get_tree().create_timer(4.0).timeout.connect(_back_to_menu)
 
