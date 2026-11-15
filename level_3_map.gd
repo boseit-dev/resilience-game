@@ -265,6 +265,7 @@ const NPCS = [
 	["MINER LOG", TABLET, 2200, 540],
 	["ENGINEER LOG", TABLET, 4975, 380],
 	["THE KEEPER", 8, 8180, 380],
+	["VALE'S LOG", TABLET, 7900, 380],          # what happened to Dr. Vale
 	["TABLET", TABLET, 9200, 380],
 	["TRIAL STONE", TABLET, 9380, 380],
 ]

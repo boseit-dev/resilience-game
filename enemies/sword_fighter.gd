@@ -41,6 +41,7 @@ func think(delta: float) -> void:
 			patrol()
 			if sees_player(SEE_DISTANCE, 40.0):
 				state = State.CHASE
+				_alert()
 		State.CHASE:
 			var dx = player.global_position.x - global_position.x
 			if not sees_player(SEE_DISTANCE + 90.0, 40.0):
@@ -100,3 +101,19 @@ func on_stomped() -> void:
 func on_reset() -> void:
 	state = State.PATROL
 	sprite.modulate = Color.WHITE
+
+
+# A "!" pops up over its head when it spots you
+func _alert() -> void:
+	var mark = Label.new()
+	mark.text = "!"
+	mark.add_theme_font_size_override("font_size", 16)
+	mark.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
+	mark.position = Vector2(-4, -40)
+	add_child(mark)
+	var pop = mark.create_tween()
+	pop.tween_property(mark, "position:y", -48.0, 0.25).set_trans(Tween.TRANS_BACK)
+	pop.tween_interval(0.4)
+	pop.tween_property(mark, "modulate:a", 0.0, 0.3)
+	pop.tween_callback(mark.queue_free)
+	Sfx.play("talk", 1.6)

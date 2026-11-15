@@ -60,6 +60,12 @@ func _ready() -> void:
 	_create_hud()
 	_update_hud()
 	add_child(preload("res://pause_menu.gd").new())
+	if level_number == 1 and has_node("Player"):   # Mira, another lost explorer, waits near where you arrive
+		var mira = preload("res://npc.tscn").instantiate()
+		mira.npc_name = "LOST EXPLORER"
+		mira.look = preload("res://assets/kenney_pixel-platformer/Tiles/Characters/tile_0004.png")
+		mira.position = Vector2(-3180, 380)
+		add_child(mira)
 	_show_banner(level_title)
 	if level_number > 1:   # Level 1 can't be beaten without all three powers, so later levels start with them
 		pad_unlocked = true
