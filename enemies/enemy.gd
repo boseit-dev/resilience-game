@@ -19,7 +19,6 @@ class_name Enemy
 const GRAVITY = 900.0
 const STOMP_BOUNCE = -330.0
 const TOUCH_COOLDOWN = 1.0             # after hurting you, it can't hurt you again for this long
-const STOMP_HEIGHT = 18.0              # your middle must be this far above its feet to count as a stomp
 const SIZE = 1.5                       # enemies are drawn (and hit) 1.5x bigger than the player
 const CHARACTERS = "res://assets/kenney_pixel-platformer/Tiles/Characters/tile_%04d.png"
 
@@ -27,6 +26,7 @@ var start_position: Vector2
 var direction = -1                     # -1 = walking left, 1 = right
 var hurt_cooldown = 0.0
 var stomp_cooldown = 0.0               # one bounce can't count as two stomps
+var above_last_frame = false           # was the player falling onto it last frame?
 var defeated = false
 var hitbox_size = Vector2(16, 20)
 var frames: Array[Texture2D] = []   # walking animation frames (each enemy type fills these in build())
@@ -106,9 +106,16 @@ func on_reset() -> void:     # go back to the starting state
 # ---------- touching the player ----------
 
 func _check_player_touch() -> void:
-	if player == null or not hitbox.overlaps_body(player):
+	if player == null:
 		return
-	var from_above = player.velocity.y > 0.0 and player.global_position.y < global_position.y - STOMP_HEIGHT * SIZE
+	# A stomp: you're falling and your middle is above its middle, now OR one frame ago.
+	# (Touching is only reported a frame late, and a fast fall can reach the floor by then.)
+	var middle = global_position.y - hitbox_size.y * SIZE * 0.5
+	var above_now = player.velocity.y > 0.0 and player.global_position.y < middle
+	var from_above = above_now or above_last_frame
+	above_last_frame = above_now
+	if not hitbox.overlaps_body(player):
+		return
 	if from_above and stomp_cooldown <= 0.0:
 		stomp_cooldown = 0.3
 		player.velocity.y = STOMP_BOUNCE

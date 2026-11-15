@@ -21,6 +21,7 @@ func _initialize() -> void:
 	await _test_archives()
 	await _test_power_core()
 	await _test_lockdown()
+	await _test_fast_stomp()
 	await _test_boss()
 	await _test_game_over()
 	print("\n", "ALL PASSED" if failures == 0 else "%d FAILED" % failures)
@@ -263,6 +264,21 @@ func _test_lockdown() -> void:
 		_beam_off(_nearest(ZAPPER, z))
 	await _walk_until(8425, 200)
 	_check("Lockdown: past the beams while they're off, switch B opens the door", door.is_open and level.deaths == 0)
+
+
+# Landing on an enemy at full falling speed (after a double jump or a pad) must stomp it, not hurt you
+func _test_fast_stomp() -> void:
+	for kind in ["archer", "sword"]:
+		await _fresh(Vector2(7000, 368), false, L2)
+		var enemy = load({"archer": "res://enemies/archer.tscn", "sword": "res://enemies/sword_fighter.tscn"}[kind]).instantiate()
+		enemy.position = Vector2(7300, 380)
+		enemy.patrol_distance = 0
+		level.get_node("Map").add_child(enemy)
+		await _frames(5)
+		level.player.global_position = Vector2(7300, 280)
+		level.player.velocity = Vector2(0, 750)
+		await _frames(30)
+		_check("Fast fall onto a %s stomps it (no life lost)" % kind, enemy.defeated and level.lives == 5)
 
 
 func _test_boss() -> void:
