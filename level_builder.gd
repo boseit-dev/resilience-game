@@ -214,7 +214,7 @@ func _enter_region(i: int) -> void:
 	if r[0] != "" and not seen_regions.has(r[0]):
 		seen_regions[r[0]] = true
 		level._show_banner(r[0])
-	if r.size() > 6 and not get_tree().get_nodes_in_group("boss").any(func(b): return b.awake):
+	if r.size() > 6 and not get("escaping") and not get_tree().get_nodes_in_group("boss").any(func(b): return b.awake):
 		Sfx.play_music(r[6])
 
 

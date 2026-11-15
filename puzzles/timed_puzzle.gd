@@ -20,6 +20,9 @@ func pull() -> void:
 	if solved or time_left > 0.0:
 		return
 	time_left = data.seconds
+	if data.get("gives_pad", false) and level.pads_remaining == 0:   # this climb needs a pad: never leave the player stuck
+		level.pads_remaining = 1
+		level._update_hud()
 	for t in targets:
 		t.open()
 	Sfx.play("unlock")

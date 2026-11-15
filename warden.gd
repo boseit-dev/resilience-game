@@ -233,8 +233,8 @@ func _die() -> void:
 	hearts.hide()
 	$Burst.emitting = true
 	Sfx.play("warden_die")
-	defeated.emit()
 	Sfx.play_level_music()
+	defeated.emit()   # after the music, so a listener (Level 3's escape) can switch to its own
 
 	var tween = create_tween()
 	tween.tween_property(art, "modulate:a", 0.0, 0.8)

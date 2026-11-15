@@ -26,7 +26,7 @@ func _initialize() -> void:
 	boss.position = Vector2(14250, 380)
 	level.add_child(boss)
 	boss.owner = level
-	boss.touched_player.connect(level._on_spikes_body_entered, CONNECT_PERSIST)
+	boss.touched_player.connect(level._on_boss_touched, CONNECT_PERSIST)
 	var portal = level.get_node("ExitPortal")   # the restored gateway, opened when the escape starts
 	portal.position = Vector2(18600, 380)
 	portal.next_scene = "res://ending.tscn"

@@ -27,7 +27,7 @@ func _initialize() -> void:
 	portal.name = "ExitPortal"
 	portal.next_scene = "res://level_3.tscn"
 	boss.defeated.connect(portal.open, CONNECT_PERSIST)
-	boss.touched_player.connect(level._on_spikes_body_entered, CONNECT_PERSIST)
+	boss.touched_player.connect(level._on_boss_touched, CONNECT_PERSIST)
 
 	var intro = Node.new()
 	intro.name = "Intro"

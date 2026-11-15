@@ -708,6 +708,17 @@ func _test_pause() -> void:
 	_key(KEY_RIGHT, false)
 	_check("Pause: the player can't move while paused", abs(level.player.global_position.x - x) < 1)
 	await _tap(KEY_DOWN)
+	_check("Pause: Down moves to Options", focus.call().text == "Options")
+	await _tap(KEY_ENTER)
+	_check("Pause: Options shows the volume sliders (still paused)", paused and pause.options.visible and focus.call() is HSlider)
+	var music_before = root.get_node("Settings").music_volume
+	await _tap(KEY_LEFT)
+	_check("Pause: Left turns the music down", root.get_node("Settings").music_volume < music_before)
+	root.get_node("Settings").music_volume = music_before
+	root.get_node("Settings").apply()
+	await _tap(KEY_ESCAPE)
+	_check("Pause: Esc on Options goes back to the pause buttons", pause.is_open and not pause.options.visible and focus.call().text == "Options")
+	await _tap(KEY_DOWN)
 	_check("Pause: Down moves to Restart", focus.call().text == "Restart")
 	await _tap(KEY_ESCAPE)
 	_check("Pause: Esc again resumes", not paused and not pause.is_open)
@@ -725,7 +736,8 @@ func _test_pause() -> void:
 	await _fresh(Vector2(300, 367))
 	var old_level = level
 	await _tap(KEY_P)
-	await _tap(KEY_DOWN)
+	await _tap(KEY_DOWN)   # Options
+	await _tap(KEY_DOWN)   # Restart
 	await _tap(KEY_ENTER)
 	await create_timer(0.5).timeout
 	_check("Pause: Restart reloads the level, unpaused",

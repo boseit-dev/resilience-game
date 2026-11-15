@@ -153,7 +153,7 @@ const SPIKES = [
 	[10920, 600], [10984, 600], [11048, 600], [11112, 600], [11176, 600], [11240, 600], [11304, 600],
 	[11720, 600], [11784, 600], [11848, 600], [11912, 600],
 	[13150, 600], [13214, 600],
-	[16360, 600], [16424, 600], [16488, 600], [16552, 600], [17520, 600], [17584, 600],
+	[16360, 600], [16424, 600], [16488, 600], [16552, 600], [16616, 600], [17520, 600], [17584, 600],
 ]
 
 # MOVING PLATFORMS: [x, top, width, travel x, travel y, seconds, (moving at the start?)]
@@ -233,7 +233,7 @@ const PUZZLES = [
 		"prisms": [[Vector2(12840, 362), 1], [Vector2(12788, 362), 0], [Vector2(12788, 482), 3], [Vector2(12680, 482), 3], [Vector2(12572, 482), 0]],
 		"hints": ["The light must cross the pit and climb out.", "A crystal in the middle can pass the light along too.", "Left, down, left, left, up."],
 		"solved_text": "THE BARRIER FADES"},
-	{"type": "timed", "opens": [["door", 9]], "area": [12900, -100, 13400, 700], "lever": Vector2(12935, 380), "seconds": 9.0, "past_x": 13390,
+	{"type": "timed", "opens": [["door", 9]], "area": [12900, -100, 13400, 700], "lever": Vector2(12935, 380), "gives_pad": true, "seconds": 9.0, "past_x": 13390,
 		"hints": ["Prepare before you pull.", "A Bounce Pad placed BEFORE pulling the lever saves time.", "Pad by the wall, lever, pad + Double Jump up, then DASH under the rock."]},
 ]
 
@@ -263,10 +263,10 @@ const SECRETS = [[2600, 190, 2800, 250, true], [8300, 160, 8450, 230, true]]
 const NPCS = [
 	["MIRA", 4, 200, 380],
 	["MINER LOG", TABLET, 2200, 540],
-	["ENGINEER LOG", TABLET, 5020, 380],
+	["ENGINEER LOG", TABLET, 4975, 380],
 	["THE KEEPER", 8, 8180, 380],
 	["TABLET", TABLET, 9200, 380],
-	["TRIAL STONE", TABLET, 9420, 380],
+	["TRIAL STONE", TABLET, 9380, 380],
 ]
 
 const CRUMBLES = [

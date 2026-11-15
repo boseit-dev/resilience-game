@@ -295,6 +295,12 @@ func _on_spikes_body_entered(body: Node2D) -> void:
 		_lose_life()
 
 
+# A boss's touch or strike: like an enemy hit (respawn grace and the shield count)
+func _on_boss_touched(body: Node2D) -> void:
+	if body == player:
+		enemy_hit_player()
+
+
 # Enemies and arrows call this. A shield takes the hit. (Spikes and falls ignore the shield.)
 func enemy_hit_player() -> void:
 	if respawning or respawn_grace > 0.0:

@@ -1,7 +1,8 @@
 extends CanvasLayer
 
 # RESILIENCE - PAUSE MENU
-# Esc, P or controller Start pauses the game. Resume / Restart / Main Menu.
+# Esc, P or controller Start pauses the game. Resume / Options / Restart / Main Menu.
+# Options = music and sound volume and fullscreen (saved by settings.gd, same as the main menu).
 # Up/Down (or the D-pad, or the mouse) to choose, Enter/A/click to pick, Esc/B/Start to resume.
 # level_1.gd adds this in _ready(). Built in code, styled like the main menu.
 
@@ -15,6 +16,10 @@ const DIM = Color("#8D97B3")
 var root: Control       # everything on screen (hidden while playing)
 var buttons: Array[Button] = []
 var is_open = false
+var column: VBoxContainer    # the main buttons
+var options: VBoxContainer   # the Options page (swaps with column)
+var music_slider: HSlider
+var full_button: Button
 
 
 func _ready() -> void:
@@ -33,7 +38,7 @@ func _ready() -> void:
 	root.add_child(shade)
 
 	# Title, flourish and buttons in a centred column
-	var column = VBoxContainer.new()
+	column = VBoxContainer.new()
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_theme_constant_override("separation", 14)
 	column.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -60,6 +65,7 @@ func _ready() -> void:
 	flourish_box.resized.connect(func(): flourish.position = Vector2(flourish_box.size.x / 2, 4))
 
 	_button(column, "Resume", close)
+	_button(column, "Options", _show_options.bind(true))
 	_button(column, "Restart", _on_restart)
 	_button(column, "Main Menu", _on_main_menu)
 
@@ -69,6 +75,81 @@ func _ready() -> void:
 		buttons[i].focus_neighbor_bottom = buttons[(i + 1) % buttons.size()].get_path()
 		buttons[i].focus_neighbor_left = buttons[i].get_path()   # left/right do nothing
 		buttons[i].focus_neighbor_right = buttons[i].get_path()
+	_build_options()
+
+
+func _build_options() -> void:
+	options = VBoxContainer.new()
+	options.alignment = BoxContainer.ALIGNMENT_CENTER
+	options.add_theme_constant_override("separation", 18)
+	options.set_anchors_preset(Control.PRESET_FULL_RECT)
+	options.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	options.visible = false
+	root.add_child(options)
+	var title = Label.new()
+	title.text = "OPTIONS"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", FONT)
+	title.add_theme_font_size_override("font_size", 40)
+	title.add_theme_color_override("font_color", WHITE)
+	options.add_child(title)
+	music_slider = _slider(options, "Music", Settings.music_volume, func(v):
+		Settings.music_volume = v
+		Settings.apply()
+		Settings.save())
+	_slider(options, "Sounds", Settings.sound_volume, func(v):
+		Settings.sound_volume = v
+		Settings.apply()
+		Settings.save()
+		Sfx.play("talk"))   # so you can hear the new loudness
+	full_button = _button(options, _fullscreen_text(), func():
+		Settings.fullscreen = not Settings.fullscreen
+		Settings.apply()
+		Settings.save()
+		full_button.text = _fullscreen_text())
+	_button(options, "Back", _show_options.bind(false))
+	buttons.resize(4)   # the wrap-around focus above is only for the main buttons
+
+
+func _show_options(show: bool) -> void:
+	options.visible = show
+	column.visible = not show
+	if show:
+		music_slider.value = Settings.music_volume
+		music_slider.grab_focus()
+	else:
+		buttons[1].grab_focus()   # back on "Options"
+
+
+func _fullscreen_text() -> String:
+	return "Fullscreen:  " + ("On" if Settings.fullscreen else "Off")
+
+
+func _slider(parent: Control, text: String, value: float, on_change: Callable) -> HSlider:
+	var row = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	parent.add_child(row)
+	var label = Label.new()
+	label.text = text
+	label.custom_minimum_size = Vector2(110, 0)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	label.add_theme_font_override("font", FONT)
+	label.add_theme_font_size_override("font_size", 22)
+	label.add_theme_color_override("font_color", DIM)
+	row.add_child(label)
+	var slider = HSlider.new()
+	slider.custom_minimum_size = Vector2(220, 30)
+	slider.max_value = 1.0
+	slider.step = 0.05
+	slider.value = value
+	slider.focus_mode = Control.FOCUS_ALL
+	slider.value_changed.connect(on_change)
+	slider.mouse_entered.connect(slider.grab_focus)
+	slider.focus_entered.connect(func(): label.add_theme_color_override("font_color", WHITE))
+	slider.focus_exited.connect(func(): label.add_theme_color_override("font_color", DIM))
+	row.add_child(slider)
+	return slider
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -81,7 +162,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not toggle:
 		return
 	get_viewport().set_input_as_handled()
-	if is_open:
+	if is_open and options.visible:   # Esc on the Options page goes back first
+		_show_options(false)
+	elif is_open:
 		close()
 	elif not get_tree().paused:  # don't open on top of the Soul Strike (it pauses the game too)
 		open()
@@ -91,6 +174,7 @@ func open() -> void:
 	is_open = true
 	get_tree().paused = true
 	root.visible = true
+	_show_options(false)
 	root.modulate.a = 0.0
 	create_tween().tween_property(root, "modulate:a", 1.0, 0.15)
 	buttons[0].grab_focus()

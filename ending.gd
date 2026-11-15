@@ -10,10 +10,7 @@ extends "res://intro_cutscene.gd"
 const ENDING_MUSIC = preload("res://assets/music/intro_theme.wav")
 const CREDITS_MUSIC = preload("res://assets/music/victory_theme.ogg")
 const QUOTE = "I built a machine to discover new worlds.\nI never imagined how much I'd fight to return to mine."
-const CREDITS = """RESILIENCE
-
-
-A GAME BY
+const CREDITS = """A GAME BY
 Aarush  ·  Gene
 
 
@@ -146,8 +143,8 @@ func _build_credits() -> void:
 	credits_layer.add_child(black)
 	title.reparent(credits_layer)
 	subtitle.reparent(credits_layer)
-	credits = _label(credits_layer, CREDITS, 18, TEXT)
-	credits.add_theme_constant_override("line_spacing", 6)
+	credits = _label(credits_layer, CREDITS, 24, TEXT)   # big enough to read in a small browser window
+	credits.add_theme_constant_override("line_spacing", 8)
 	credits.position.y = 760
 	credits.modulate.a = 0.0
 	var skip = _label(credits_layer, "SPACE / ENTER   MAIN MENU", 11, Color(0.84, 0.9, 1, 0.5))
