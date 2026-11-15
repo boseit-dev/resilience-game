@@ -12,3 +12,5 @@ and could be used for later levels.
 night_shade.mp3 / .ogg (only if you add it yourself): "Night Shade" by AdhesiveWombat.
 His terms (soundcloud.com/adhesivewombat): free for non-commercial games/projects; for commercial
 games/projects, contact the artist first. Credit: Music: AdhesiveWombat - Night Shade.
+intro_theme.wav is "Juhani Junkala [Retro Game Music Pack] Title Screen.wav" from the same pack (CC0),
+downloaded 2026-11-15 from the page above, converted to mono 32 kHz WAV. Used in the intro cutscene.

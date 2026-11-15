@@ -11,7 +11,7 @@ extends Control
 
 const FONT = preload("res://assets/fonts/Cinzel.ttf")
 const Ornament = preload("res://menu_ornament.gd")
-const FIRST_LEVEL = "res://level_1.tscn"
+const FIRST_LEVEL = "res://intro_cutscene.tscn"   # the intro plays first, then Level 1
 
 const WHITE = Color("#F2F6FF")
 const DIM = Color("#8D97B3")

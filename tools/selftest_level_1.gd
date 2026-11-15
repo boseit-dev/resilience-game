@@ -20,7 +20,11 @@ func _initialize() -> void:
 	await _test_late_jumps()
 	await _test_breach()
 	await _test_leap()
+	await _test_expansion()
 	await _test_checkpoint_and_pads()
+	await _test_enemies()
+	await _test_one_life_per_enemy_death()
+	await _test_chests_and_rewards()
 	await _test_warden_and_portal()
 	await _test_special()
 	await _test_npcs()
@@ -165,6 +169,107 @@ func _test_leap() -> void:
 	_check("Leap of Faith: jump, jump, dash makes it", level.deaths == 0 and _landed_on(6040, 6900, 400))
 
 
+# The newer areas (level_1_expansion.gd): every branch can be reached AND left again
+func _test_expansion() -> void:
+	await _fresh(Vector2(-3400, 368), true)
+	var ex = level.get_node("Expansion")
+	var placed = ex.get_children().filter(func(n): return n.is_in_group("enemies"))
+	var chests = ex.get_children().filter(func(n): return n.scene_file_path == "res://chest.tscn")
+	_check("Expansion: 10 enemies and 5 chests are placed", placed.size() == 10 and chests.size() == 5)
+	_check("Expansion: the player starts at the arrival rift", level.player.global_position.x < -3000)
+	await _frames(60)
+	_check("Expansion: no enemy fell out of the world", placed.all(func(e): return is_instance_valid(e) and e.global_position.y < 600))
+
+	# Upper Ruins: up the broken stairs to the high walkway (no powers needed)
+	await _fresh(Vector2(-3100, 368))
+	await _leap(-3055, -2985, false, "")
+	_check("Upper Ruins: first stair step", _landed_on(-3000, -2940, 330))
+	await _leap(-2965, -2895, false, "")
+	_check("Upper Ruins: second stair step", _landed_on(-2910, -2850, 285))
+	await _leap(-2875, -2805, false, "")
+	_check("Upper Ruins: third stair step", _landed_on(-2820, -2760, 240))
+	await _leap(-2785, -2650, false, "")
+	_check("Upper Ruins: onto the high walkway", _landed_on(-2730, -2400, 205) and level.deaths == 0)
+
+	# Sunken Hollow: drop through the crack (safe), then climb out without any powers
+	await _fresh(Vector2(-2700, 368))
+	await _walk_until(-2570, 120)
+	await _frames(50)
+	_check("Sunken Hollow: falling through the crack is safe", _landed_on(-2610, -2530, 530) and level.deaths == 0)
+	_check("Sunken Hollow: the area name shows", level.banner.text == "SUNKEN HOLLOW")
+	await _fresh(Vector2(-2060, 508))
+	await _leap(-2005, -1945, false, "")
+	_check("Sunken Hollow: jump onto the first step", _landed_on(-1950, -1905, 470))
+	await _leap(-1935, -1865, false, "")
+	_check("Sunken Hollow: jump onto the second step", _landed_on(-1880, -1840, 425))
+	await _leap(-1855, -1750, false, "")
+	_check("Sunken Hollow: climb back out to the path", _landed_on(-1780, -1560, 375) and level.deaths == 0)
+
+	# Thorn Rise: a bounce pad placed well before the treasure ledge gets you onto it
+	await _fresh(Vector2(1466, 367))
+	level.pad_unlocked = true
+	await _tap(KEY_E)
+	await _walk_until(1625, 120)
+	await _frames(70)
+	_check("Thorn Rise: a pad gets you onto the treasure ledge", _landed_on(1600, 1660, 250))
+
+	# Hollow Spire: at the right end of Jump Platform 2, double jump straight up, then step right
+	await _fresh(Vector2(3700, 117))
+	level.player.double_jump_unlocked = true
+	await _tap(KEY_SPACE)
+	while level.player.velocity.y < 0.0:
+		await physics_frame
+	await _tap(KEY_SPACE)
+	while level.player.velocity.y < -60.0:
+		await physics_frame
+	_key(KEY_RIGHT, true)
+	while level.player.global_position.x < 3755:
+		await physics_frame
+	_key(KEY_RIGHT, false)
+	await _frames(60)
+	_check("Spire Hideout: double jump reaches it", _landed_on(3722, 3800, -20) and level.deaths == 0)
+
+	# The Breach: the gap between floors B and C hides a tunnel; you can climb back up
+	await _fresh(Vector2(4960, 157))
+	level.player.double_jump_unlocked = true
+	await _walk_until(5040, 120)
+	await _frames(60)
+	_check("Breach tunnel: dropping into the gap lands in the tunnel", _landed_on(4990, 5380, 340) and level.deaths == 0)
+	level.player.global_position = Vector2(4997, 318)
+	await _frames(10)
+	await _leap(5000, 5068, false, "")
+	_check("Breach tunnel: jump onto the step", _landed_on(5050, 5085, 290))
+	# jump, double jump, and only then move right (moving right too early walks under floor C)
+	await _tap(KEY_SPACE)
+	while level.player.velocity.y < 0.0:
+		await physics_frame
+	await _tap(KEY_SPACE)
+	while level.player.velocity.y < -150.0:
+		await physics_frame
+	_key(KEY_RIGHT, true)
+	await _frames(12)
+	_key(KEY_RIGHT, false)
+	await _frames(40)
+	_check("Breach tunnel: double jump back up to floor C", _landed_on(5090, 5300, 165))
+
+	# Warden's Approach: the final checkpoint, then the drop into the arena
+	await _fresh(Vector2(6520, 157))
+	await _walk_until(6605, 150)
+	await _frames(20)
+	_check("Warden's Approach: the final checkpoint becomes the respawn point", level.spawn_position.x > 6550 and level.spawn_position.x < 6650)
+	var barrier = level.get_node("Expansion").get_children().filter(func(n): return n.get_script() == load("res://wooden_barrier.gd") and n.position.x > 6900)[0]
+	level.player.dash_unlocked = true
+	await _walk_until(6905, 120)
+	_check("Wooden barrier: walking into it does nothing (it blocks the way)", not barrier.broken and level.player.global_position.x < 6900)
+	_key(KEY_RIGHT, true)
+	await _tap(KEY_SHIFT)
+	await _frames(10)
+	_check("Wooden barrier: a dash smashes it", barrier.broken)
+	await _walk_until(7080, 300)
+	await _frames(40)
+	_check("Warden's Approach: drops into the Warden's arena", _landed_on(7036, 7796, 390) and level.deaths == 0)
+
+
 func _test_checkpoint_and_pads() -> void:
 	await _fresh(Vector2(300, 368))
 	level.pad_unlocked = true
@@ -175,7 +280,7 @@ func _test_checkpoint_and_pads() -> void:
 	var cp = level.get_node("Checkpoints/CP2_HollowSpire")
 	_check("Touching a lantern lights it", cp.get_node("Glow").enabled)
 	level._lose_life()
-	await _frames(5)
+	await _after_death()
 	_check("Respawn happens at the last lantern", level.player.global_position.distance_to(cp.global_position) < 30)
 	_check("Placed pads survive death", is_instance_valid(pad) and level.pads_remaining == 2)
 
@@ -212,22 +317,225 @@ func _test_checkpoint_and_pads() -> void:
 	level.lives = 1
 	level._lose_life()
 	await _frames(10)
-	_check("Game over shows 'THE BETWEEN CLAIMS YOU' before restarting", current_scene == before and level.banner.text == "THE BETWEEN CLAIMS YOU")
+	_check("Game over: the Game Over screen shows before restarting", current_scene == before and is_instance_valid(level.game_over_screen))
 	while current_scene == before or current_scene == null:
 		await process_frame
 	_check("Game over then restarts the level with 5 lives", current_scene.lives == 5)
 	level = current_scene
 
 
+# ---------- Level 1 expansion: enemies ----------
+
+func _spawn(scene_path: String, at: Vector2) -> Node:
+	var thing = load(scene_path).instantiate()
+	thing.position = at  # before add_child, so enemies remember this as home
+	level.add_child(thing)
+	return thing
+
+
+func _test_enemies() -> void:
+	# Sword Fighter: sees you, chases, warns, swings: exactly one life lost
+	await _fresh(Vector2(300, 368))
+	level.spawn_position = Vector2(60, 368)  # respawn far away, out of its sight
+	var sword = _spawn("res://enemies/sword_fighter.tscn", Vector2(380, 380))
+	await _frames(20)
+	_check("Sword Fighter: spots you and chases", sword.state != sword.State.PATROL)
+	await _frames(70)
+	_check("Sword Fighter: its swing costs exactly one life", level.lives == 4 and level.deaths == 1)
+	await _frames(60)
+	_check("Sword Fighter: no second hit after you respawn far away", level.lives == 4)
+
+	# Stomp from above defeats it, without hurting you
+	await _fresh(Vector2(400, 300))
+	sword = _spawn("res://enemies/sword_fighter.tscn", Vector2(400, 380))
+	await _frames(40)
+	_check("Sword Fighter: one stomp from above defeats it (no life lost)", (not is_instance_valid(sword) or sword.defeated) and level.lives == 5)
+
+	# Walking into one: one life, not one per frame
+	await _fresh(Vector2(300, 368))
+	level.spawn_position = Vector2(300, 368)
+	var walker = _spawn("res://enemies/sword_fighter.tscn", Vector2(300, 380))
+	walker.set_physics_process(false)
+	await _frames(3)  # let physics notice the overlap
+	walker.hurt_cooldown = 0.0
+	walker._check_player_touch()
+	walker._check_player_touch()
+	walker._check_player_touch()
+	await _frames(5)
+	_check("Enemies: touching one costs one life, not one per frame", level.lives == 4)
+	walker.queue_free()
+
+	# Archer: draws, fires a real arrow that flies and hits
+	await _fresh(Vector2(260, 368))
+	level.spawn_position = Vector2(-2000, 368) if level.has_node("Expansion") else Vector2(60, 368)
+	var archer = _spawn("res://enemies/archer.tscn", Vector2(480, 380))
+	var saw_arrow = false
+	for i in 200:
+		await physics_frame
+		saw_arrow = saw_arrow or not get_nodes_in_group("arrows").is_empty()
+		if level.deaths > 0:
+			break
+	_check("Archer: fires an arrow you can see", saw_arrow)
+	_check("Archer: the arrow hits you (one life)", level.lives == 4)
+	archer.queue_free()
+
+	# Arrows stop at walls, and archers don't shoot through them
+	await _fresh(Vector2(200, 368))
+	var wall = StaticBody2D.new()
+	var wall_shape = CollisionShape2D.new()
+	wall_shape.shape = RectangleShape2D.new()
+	wall_shape.shape.size = Vector2(30, 200)
+	wall.add_child(wall_shape)
+	level.add_child(wall)
+	wall.global_position = Vector2(330, 300)
+	archer = _spawn("res://enemies/archer.tscn", Vector2(460, 380))
+	await _frames(90)
+	_check("Archer: doesn't shoot through a wall", get_nodes_in_group("arrows").is_empty() and level.lives == 5)
+	var arrow = load("res://enemies/arrow.gd").new()
+	arrow.velocity = Vector2(-240, 0)
+	level.add_child(arrow)
+	arrow.global_position = Vector2(420, 360)
+	await _frames(40)
+	_check("Arrow: disappears when it hits a wall", not is_instance_valid(arrow) and level.lives == 5)
+	archer.queue_free()
+	wall.queue_free()
+
+	# Armoured Guardian: three stomps, armour cracks, then breaks
+	await _fresh(Vector2(420, 260))
+	var guardian = _spawn("res://enemies/guardian.tscn", Vector2(420, 380))
+	var cracks_seen = []
+	for i in 300:
+		await physics_frame
+		if is_instance_valid(guardian) and not guardian.defeated and cracks_seen.size() < 3 - guardian.health:
+			cracks_seen.append(guardian.cracks.get_child_count())
+		if not is_instance_valid(guardian) or guardian.defeated:
+			break
+	_check("Guardian: 3 stomps defeat it", not is_instance_valid(guardian) or guardian.defeated)
+	_check("Guardian: armour cracks after stomp 1 and breaks more after stomp 2", cracks_seen.size() >= 2 and cracks_seen[1] > cracks_seen[0] and cracks_seen[0] > 0)
+	_check("Guardian: bouncing on its head didn't cost a life", level.lives == 5)
+
+	# Guardian slam: warns first, then hurts if you stay close
+	await _fresh(Vector2(380, 368))
+	level.spawn_position = Vector2(60, 368)
+	guardian = _spawn("res://enemies/guardian.tscn", Vector2(430, 380))
+	await _frames(10)
+	_check("Guardian: crouches and glows before slamming (warning)", guardian.state == guardian.State.WARN and level.lives == 5)
+	await _frames(40)
+	_check("Guardian: its slam hits you if you stay close", level.lives == 4)
+	guardian.queue_free()
+
+	# Respawning sends living enemies home
+	await _fresh(Vector2(300, 368))
+	sword = _spawn("res://enemies/sword_fighter.tscn", Vector2(500, 380))
+	sword.global_position = Vector2(420, 380)
+	level._lose_life()
+	await _after_death()
+	_check("Enemies: respawning sends them back to where they started", sword.global_position.distance_to(Vector2(500, 380)) < 10)
+	sword.queue_free()
+
+
+# ---------- Level 1 expansion: chests and rewards ----------
+
+# Bug report: dying to an enemy cost 2 lives (one from the enemy, one just from respawning)
+func _test_one_life_per_enemy_death() -> void:
+	await _fresh(Vector2(300, 368))
+	level.spawn_position = Vector2(-3400, 368)
+	var sword = _spawn("res://enemies/sword_fighter.tscn", Vector2(300, 380))
+	await create_timer(3.0).timeout
+	_check("Enemy death: one hit costs exactly one life (not one more on respawn)", level.lives == level.MAX_LIVES - 1 and level.deaths == 1)
+	# An enemy right next to the lantern can't hit you the moment you reappear
+	level.spawn_position = Vector2(300, 368)
+	sword.reset_after_player_death()
+	level._lose_life()
+	await _after_death()
+	await _frames(20)
+	_check("Respawn: a short safe time (the player blinks) before enemies can hurt you", level.respawn_grace > 0.0 and level.lives == level.MAX_LIVES - 2)
+	await create_timer(2.0).timeout
+	_check("Respawn: after the safe time, enemies hurt you again", level.lives == level.MAX_LIVES - 3)
+
+
+func _test_chests_and_rewards() -> void:
+	await _fresh(Vector2(300, 368))
+	var chest = _spawn("res://chest.tscn", Vector2(310, 380))
+	await _frames(5)
+	_check("Chest: walking up shows 'E  OPEN'", chest.prompt.visible)
+	var pads_before = level.pads_remaining
+	await _tap(KEY_E)
+	await _frames(5)
+	_check("Chest: E opens it (and places no pad)", chest.opened and level.placed_pads.is_empty() and level.pads_remaining == pads_before)
+	_check("Chest: the reward is shown", level.banner.text.begins_with("TREASURE"))
+	var banner_text = level.banner.text
+	await _tap(KEY_E)
+	await _frames(5)
+	_check("Chest: it can't be opened twice", level.banner.text == banner_text)
+	level._lose_life()
+	await _after_death()
+	_check("Chest: stays open after an ordinary death", is_instance_valid(chest) and chest.opened)
+
+	# Reward picks never include useless ones (start clean: the chest's random reward may have been a shield)
+	level.player.has_shield = false
+	level.player.speed_boost_timer = 0.0
+	level.lives = 5
+	var picks = {}
+	for i in 300:
+		picks[chest.pick_reward(level)] = true
+	_check("Chest: no heart at full lives, no pad or dash before they're unlocked", not picks.has("heart") and not picks.has("pad") and not picks.has("dash"))
+	level.lives = 3
+	level.pad_unlocked = true
+	level.player.dash_unlocked = true
+	picks = {}
+	for i in 400:
+		picks[chest.pick_reward(level)] = true
+	_check("Chest: all five rewards can appear when useful", picks.size() == 5)
+
+	# Each reward works
+	level.lives = 3
+	level.give_reward("heart")
+	level.give_reward("pad")
+	_check("Rewards: +1 life and +1 bounce pad", level.lives == 4 and level.pads_remaining == pads_before + 1)
+	level.lives = 5
+	level.give_reward("heart")
+	_check("Rewards: a heart never goes above 5 lives", level.lives == 5)
+	level.give_reward("speed")
+	_key(KEY_RIGHT, true)
+	await _frames(5)
+	var fast = level.player.velocity.x
+	_check("Rewards: speed boost makes you faster", fast > level.player.SPEED * 1.2)
+	_key(KEY_RIGHT, false)
+	level.player.speed_boost_timer = 0.2
+	await _frames(15)
+	_check("Rewards: the speed boost wears off", level.player.speed_boost_timer == 0.0 and level.boost_label.text == "")
+	level.give_reward("dash")
+	await _frames(2)
+	_check("Rewards: quick dash shows in the HUD", level.boost_label.text.begins_with("QUICK DASH"))
+	level.player.dash_boost_timer = 0.0
+
+	# Shield: blocks one enemy hit, not spikes (so power-unlocking deaths still work)
+	await _fresh(Vector2(300, 368))
+	level.give_reward("shield")
+	await _frames(2)
+	level.enemy_hit_player()
+	await _frames(5)
+	_check("Shield: blocks one enemy hit", level.lives == 5 and not level.player.has_shield)
+	level.enemy_hit_player()
+	await _frames(5)
+	_check("Shield: the next hit costs a life", level.lives == 4)
+	await _after_death()
+	level.give_reward("shield")
+	level._on_spikes_body_entered(level.player)
+	await _frames(5)
+	_check("Shield: spikes ignore it (unlock deaths still work)", level.lives == 3 and level.player.has_shield)
+
+
 func _test_warden_and_portal() -> void:
-	await _fresh(Vector2(6200, 367))
+	await _fresh(Vector2(7096, 367))
 	var warden = level.get_node("Warden")
 	level.player.global_position = Vector2(warden.global_position.x - 70, 367)
 	await _frames(120)
 	_check("Warden: touching its side costs a life", level.deaths == 1)
 
 	# Charge: it flashes red, then rushes at you. Standing still costs a life...
-	await _fresh(Vector2(6200, 367))
+	await _fresh(Vector2(7096, 367))
 	warden = level.get_node("Warden")
 	level.player.global_position = Vector2(warden.global_position.x - 150, 367)
 	warden.charge_timer = 0.01
@@ -235,7 +543,7 @@ func _test_warden_and_portal() -> void:
 	_check("Warden: its charge hits you if you stand still", level.deaths == 1)
 
 	# ...jumping over it as it arrives is safe
-	await _fresh(Vector2(6200, 367))
+	await _fresh(Vector2(7096, 367))
 	warden = level.get_node("Warden")
 	level.player.global_position = Vector2(warden.global_position.x - 150, 367)
 	await _frames(5)
@@ -250,7 +558,7 @@ func _test_warden_and_portal() -> void:
 
 	# A stomp seals your jump for 5 s while strikes come down
 	await _stomp_once()
-	_check("Warden: after a stomp it leaps away, so you can't keep bouncing on it", abs(warden_now().global_position.x - 6560) > 150)
+	_check("Warden: after a stomp it leaps away, so you can't keep bouncing on it", abs(warden_now().global_position.x - 7456) > 150)
 	await _frames(30)
 	_check("Warden: standing where it was doesn't stomp it again", warden_now().health == 4)
 	_check("Warden: a stomp seals your jump for 5 s", warden_now().health == 4 and level.player.jump_locked_timer > 4.0)
@@ -265,7 +573,7 @@ func _test_warden_and_portal() -> void:
 	# Dodge: stand on one of two spots and move to the other whenever a red mark appears under you
 	await _stomp_once()
 	var wx = warden_now().global_position.x
-	var side = 1 if wx < 6560 else -1  # it leapt to one end of the arena: dodge on the open side
+	var side = 1 if wx < 7456 else -1  # it leapt to one end of the arena: dodge on the open side
 	var spots = [wx + side * 280, wx + side * 160]
 	var target = 0
 	level.player.global_position = Vector2(spots[0], 367)
@@ -284,7 +592,7 @@ func _test_warden_and_portal() -> void:
 	_check("Boss music plays in the arena", root.get_node("Sfx").music.stream.resource_path.ends_with("boss_theme.ogg"))
 
 	# Five stomps beat it (it is held still and not charging, so the robot only tests stomping)
-	await _fresh(Vector2(6200, 367))
+	await _fresh(Vector2(7096, 367))
 	warden = level.get_node("Warden")
 	var portal = level.get_node("ExitPortal")
 	_check("Warden has 5 hearts", warden.health == 5 and warden.get_node("Hearts").get_child_count() == 5)
@@ -317,7 +625,7 @@ func _test_warden_and_portal() -> void:
 
 # Soul Strike: after the 3rd stomp the game pauses and asks for 20 SPACE presses in 3 s
 func _special_setup() -> Node:
-	await _fresh(Vector2(6200, 367))
+	await _fresh(Vector2(7096, 367))
 	var warden = warden_now()
 	warden.speed = 0.0
 	warden.charge_timer = 99.0
@@ -378,15 +686,15 @@ func _test_npcs() -> void:
 	await _frames(5)
 	_check("NPC: walking away closes the bubble", not npc.get_node("Bubble").visible and level.pads_remaining == 3)
 	var all_talk = level.get_node("Npcs").get_children().all(func(n): return n.lines.size() >= 2)
-	_check("NPC: all 7 NPCs are there, and every one has real lines (not 'Hello')",
-		level.get_node("Npcs").get_child_count() == 7 and not level.has_node("Signs") and all_talk)
+	_check("NPC: all 8 NPCs are there, and every one has real lines (not 'Hello')",
+		level.get_node("Npcs").get_child_count() == 8 and not level.has_node("Signs") and all_talk)
 
 
 # Lessons: powers unlock where their NPC teaches them, and lives top up at each teacher
 func _test_lessons() -> void:
 	await _fresh(Vector2(1000, 367))  # spike garden, before Sable
 	level._lose_life()
-	await _frames(5)
+	await _after_death()
 	_check("Lessons: dying before reaching Sable unlocks nothing", level.deaths == 1 and not level.pad_unlocked)
 
 	# The example: died twice before Tomas (3 lives left), Bounce Pad already unlocked
@@ -398,7 +706,7 @@ func _test_lessons() -> void:
 	await _frames(5)
 	_check("Lessons: reaching Tomas with 3 lives tops you up to 4", level.lesson == 2 and level.lives == 4)
 	level._lose_life()
-	await _frames(5)
+	await _after_death()
 	_check("Lessons: then one death there unlocks Double Jump", level.player.double_jump_unlocked and level.lives == 3)
 
 
@@ -465,7 +773,26 @@ func _test_menu() -> void:
 	_check("Menu: Esc goes back to the main page", menu.pages["main"].visible and focus.call().text == "Start Game")
 	await _tap(KEY_ENTER)
 	await create_timer(1.5).timeout
-	_check("Menu: Start Game fades into Level 1", current_scene != null and current_scene.scene_file_path == "res://level_1.tscn")
+	_check("Menu: Start Game fades into the intro cutscene", current_scene != null and current_scene.scene_file_path == "res://intro_cutscene.tscn")
+	var sfx = root.get_node("Sfx")
+	_check("Intro: its own music plays", sfx.music_target == current_scene.CALM_MUSIC)
+	await _tap(KEY_SPACE)
+	await create_timer(1.0).timeout
+	_check("Intro: Space skips straight to Level 1", current_scene != null and current_scene.scene_file_path == "res://level_1.tscn")
+	await create_timer(2.5).timeout
+	_check("Intro: Level 1 switches back to the level music", sfx.music_target == sfx.MUSIC)
+
+	# Watched to the end (time jumped forward), it also starts Level 1, and a death doesn't replay it
+	change_scene_to_file("res://intro_cutscene.tscn")
+	await create_timer(0.3).timeout
+	current_scene.t = 39.5
+	await create_timer(1.6).timeout
+	_check("Intro: when it ends, Level 1 starts", current_scene != null and current_scene.scene_file_path == "res://level_1.tscn")
+	level = current_scene
+	level._lose_life()
+	await _after_death()
+	await _frames(5)
+	_check("Intro: dying in Level 1 does not replay the intro", current_scene == level and level.lives == level.MAX_LIVES - 1)
 
 
 # ---------- the scared Quit button + "are you sure?" window ----------
@@ -636,7 +963,7 @@ func _joy(button: JoyButton) -> void:
 
 # Fresh level, Warden held still and not charging, player dropped on its head once
 func _stomp_once() -> void:
-	await _fresh(Vector2(6200, 367))
+	await _fresh(Vector2(7096, 367))
 	var warden = warden_now()
 	warden.speed = 0.0
 	warden.charge_timer = 99.0
@@ -649,13 +976,20 @@ func warden_now() -> Node2D:
 	return level.get_node("Warden")
 
 
-func _fresh(start: Vector2) -> void:
+# A new copy of the level with the player at start. The enemies placed around the level
+# are removed (unless keep_enemies) so movement checks only test the level's shape;
+# the enemies have their own checks.
+func _fresh(start: Vector2, keep_enemies := false) -> void:
 	_release_all()
 	var old = current_scene
 	change_scene_to_file("res://level_1.tscn")
 	while current_scene == null or current_scene == old:
 		await process_frame
 	level = current_scene
+	if not keep_enemies:
+		for node in level.get_node("Expansion").get_children():
+			if node.is_in_group("enemies"):
+				node.free()
 	level.player.global_position = start
 	level.spawn_position = start
 	await _frames(15)
@@ -719,7 +1053,7 @@ func _leap(edge_x: float, stop_x: float, double_jump: bool, dash_mode: String) -
 	for t in 300:
 		await physics_frame
 		var p = level.player
-		if stop_x > 0 and p.global_position.x >= stop_x:
+		if stop_x != -1.0 and p.global_position.x >= stop_x:   # -1 = never stop
 			_key(KEY_RIGHT, false)
 		if double_jump and not did_double and p.velocity.y >= 0.0:
 			await _tap(KEY_SPACE)
@@ -733,6 +1067,15 @@ func _leap(edge_x: float, stop_x: float, double_jump: bool, dash_mode: String) -
 			break
 	_key(KEY_RIGHT, false)
 	await _frames(10)
+	await _after_death()
+
+
+# Wait for the death animation and respawn to finish
+func _after_death() -> void:
+	for i in 120:
+		if not level.respawning:
+			return
+		await physics_frame
 
 
 func _landed_on(x_min: float, x_max: float, y_max: float) -> bool:

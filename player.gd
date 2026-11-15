@@ -42,6 +42,25 @@ var dash_cooldown: float = 0.0
 var coyote_timer: float = 0.0
 var jump_buffer_timer: float = 0.0
 
+# Chest rewards (chest.gd / level_1.gd give_reward): timers count down to 0
+const BOOSTED_SPEED = 1.3          # speed boost: 30% faster
+const BOOSTED_DASH_COOLDOWN = 0.25 # dash boost: dash again much sooner
+var speed_boost_timer: float = 0.0
+var dash_boost_timer: float = 0.0
+var has_shield: bool = false       # absorbs one enemy hit (not spikes or falls)
+var shield_ring: Line2D
+
+
+func _ready() -> void:
+	# A thin glowing ring that shows while the shield is up
+	shield_ring = Line2D.new()
+	shield_ring.width = 1.5
+	shield_ring.default_color = Color(0.5, 0.9, 1.0, 0.8)
+	for i in 25:
+		shield_ring.add_point(Vector2.from_angle(i * TAU / 24) * 17)
+	shield_ring.visible = false
+	add_child(shield_ring)
+
 
 func _physics_process(delta: float) -> void:
 
@@ -80,6 +99,12 @@ func _physics_process(delta: float) -> void:
 	# Countdown for dash
 	dash_cooldown = max(0.0, dash_cooldown - delta)
 
+	# Chest boosts wear off; the shield ring pulses while it's up
+	speed_boost_timer = max(0.0, speed_boost_timer - delta)
+	dash_boost_timer = max(0.0, dash_boost_timer - delta)
+	shield_ring.visible = has_shield
+	shield_ring.modulate.a = 0.6 + 0.4 * sin(Time.get_ticks_msec() / 150.0)
+
 	# Countdown for the Warden's jump seal (the player glows purple while sealed)
 	jump_locked_timer = max(0.0, jump_locked_timer - delta)
 	$Sprite2D.modulate = SEALED_COLOR if jump_locked_timer > 0.0 else Color.WHITE
@@ -101,7 +126,7 @@ func _physics_process(delta: float) -> void:
 		and dash_cooldown <= 0.0
 	):
 		dash_timer = DASH_DURATION
-		dash_cooldown = DASH_COOLDOWN
+		dash_cooldown = BOOSTED_DASH_COOLDOWN if dash_boost_timer > 0.0 else DASH_COOLDOWN
 		Sfx.play("dash")
 
 	dash_was_pressed = dash_pressed
@@ -143,7 +168,7 @@ func _physics_process(delta: float) -> void:
 
 	# Horizontal movement
 	if direction != 0:
-		velocity.x = direction * SPEED
+		velocity.x = direction * SPEED * (BOOSTED_SPEED if speed_boost_timer > 0.0 else 1.0)
 	else:
 		velocity.x = move_toward(
 			velocity.x,
@@ -163,6 +188,8 @@ func reset_after_respawn() -> void:
 	coyote_timer = 0.0
 	jump_buffer_timer = 0.0
 	jump_locked_timer = 0.0
+	speed_boost_timer = 0.0   # boosts end when you die (the shield stays until it's used)
+	dash_boost_timer = 0.0
 
 	jump_was_pressed = (
 		Input.is_physical_key_pressed(KEY_W)

@@ -23,12 +23,13 @@ const FONT = preload("res://assets/fonts/Cinzel.ttf")
 # The three NPCs who each teach a power (1 = Bounce Pad, 2 = Double Jump, 3 = Dash).
 # Walking past one starts its lesson: your next death unlocks that power,
 # and your lives are topped up to what a perfect run would have by then.
-const LESSONS = {"SABLE": 1, "TOMAS": 2, "IVY": 3}
+const LESSONS = {"SABLE": 1, "TOMAS": 2, "IVY": 3, "RHEA": 4}   # RHEA: lives top-up before the end
 
 var lives = MAX_LIVES
 var deaths = 0
 var pads_remaining = MAX_PADS
 var respawning = false
+var respawn_grace = 0.0     # seconds after a respawn where enemies and arrows can't hurt you
 var restart_armed = false   # R was pressed once; a second press within 2 s restarts
 var pad_unlocked = false
 var lesson = 0   # the latest lesson reached (see LESSONS)
@@ -40,8 +41,21 @@ var placed_pads: Array[Area2D] = []
 
 var life_icons: Array[TextureRect] = []
 var shown_lives = MAX_LIVES          # so the HUD knows when a life was just lost
+var hud_layer: CanvasLayer
+var fade_rect: ColorRect             # black screen for the death fade
+var hurt_vignette: TextureRect       # red glow around the screen edges when you die
+var game_over_screen: Control        # shown when the last life is lost (null otherwise)
+var effects_layer: CanvasLayer       # bright effects drawn in the world but not darkened by the night
+
+# Death: shatter (DEATH_PAUSE) -> fade to black -> respawn -> fade back in
+const DEATH_PAUSE = 0.5
+const FADE_OUT = 0.22
+const FADE_IN = 0.35
+const RESPAWN_GRACE = 1.0           # seconds you can't be hurt by enemies after respawning
+const GAME_OVER_TIME = 3.5           # seconds on the Game Over screen (Space/Enter skips)
 var power_rows: Array[Control] = []  # pad, double jump, dash (hidden until unlocked)
 var pad_counter: Label
+var boost_label: Label               # active chest boosts (speed, dash, shield)
 var banner: Label
 var banner_tween: Tween
 
@@ -67,6 +81,11 @@ func _create_hud() -> void:
 	layer.name = "HUD"
 	layer.layer = 10
 	add_child(layer)
+	hud_layer = layer
+	effects_layer = CanvasLayer.new()
+	effects_layer.layer = 2
+	effects_layer.follow_viewport_enabled = true  # moves with the camera like the world does
+	add_child(effects_layer)
 
 	# A soft dark shadow in the corner, so the HUD is readable over anything
 	var shade_colors = Gradient.new()
@@ -107,6 +126,14 @@ func _create_hud() -> void:
 	power_rows.append(_power_row(powers, "SHIFT", "DASH"))
 	pad_counter = power_rows[0].get_child(1)
 
+	# Active chest boosts, e.g. "SPEED 6s  ·  SHIELD" (empty when there are none)
+	boost_label = Label.new()
+	boost_label.add_theme_font_size_override("font_size", 13)
+	boost_label.add_theme_color_override("font_color", Color("#FFE08A"))
+	boost_label.add_theme_color_override("font_outline_color", Color("#07060C"))
+	boost_label.add_theme_constant_override("outline_size", 4)
+	powers.add_child(boost_label)
+
 	# Messages (level title, unlocks) at the top in the middle
 	banner = Label.new()
 	banner.set_anchors_preset(Control.PRESET_TOP_WIDE)
@@ -120,6 +147,29 @@ func _create_hud() -> void:
 	banner.modulate.a = 0.0
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(banner)
+
+	# Death effects: a red glow at the screen edges, and a black fade (both start invisible)
+	var red = Gradient.new()
+	red.colors = PackedColorArray([Color(0.6, 0.0, 0.05, 0.0), Color(0.6, 0.0, 0.05, 0.7)])
+	red.offsets = PackedFloat32Array([0.7, 1.0])
+	var red_texture = GradientTexture2D.new()
+	red_texture.gradient = red
+	red_texture.fill = GradientTexture2D.FILL_RADIAL
+	red_texture.fill_from = Vector2(0.5, 0.5)
+	red_texture.fill_to = Vector2(1.0, 0.5)
+	hurt_vignette = TextureRect.new()
+	hurt_vignette.texture = red_texture
+	hurt_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hurt_vignette.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	hurt_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hurt_vignette.modulate.a = 0.0
+	layer.add_child(hurt_vignette)
+	fade_rect = ColorRect.new()
+	fade_rect.color = Color("#05040A")
+	fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade_rect.modulate.a = 0.0
+	layer.add_child(fade_rect)
 
 
 # One power line: a little key, then what it does. Hidden until unlocked.
@@ -191,6 +241,10 @@ func _show_power(row: Control, unlocked: bool) -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey:
+		if event.pressed and not event.echo and is_instance_valid(game_over_screen):
+			if event.physical_keycode in [KEY_SPACE, KEY_ENTER]:
+				_restart_after_game_over()
+			return
 		if event.pressed and not event.echo:
 
 			if event.physical_keycode == KEY_E:
@@ -299,10 +353,70 @@ func _on_spikes_body_entered(body: Node2D) -> void:
 
 # FALL DETECTION
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	# Just respawned: blink while enemies can't hurt you
+	if respawn_grace > 0.0:
+		respawn_grace -= delta
+		player.visible = respawn_grace <= 0.0 or int(respawn_grace * 12.0) % 2 == 0
 	if player.global_position.y > 900:
 		_lose_life()
 	_check_lessons()
+	_update_boost_label()
+
+
+func _update_boost_label() -> void:
+	var parts = []
+	if player.speed_boost_timer > 0.0:
+		parts.append("SPEED %ds" % ceil(player.speed_boost_timer))
+	if player.dash_boost_timer > 0.0:
+		parts.append("QUICK DASH %ds" % ceil(player.dash_boost_timer))
+	if player.has_shield:
+		parts.append("SHIELD")
+	boost_label.text = "  ·  ".join(parts)
+
+
+# ENEMIES (enemies/enemy.gd, arrow.gd call this when they hit you)
+# A shield takes the hit; otherwise you lose a life. Spikes and falls ignore the shield,
+# so the deaths that unlock powers always work.
+
+func enemy_hit_player() -> void:
+	if respawning or respawn_grace > 0.0:
+		return
+	if player.has_shield:
+		player.has_shield = false
+		Sfx.play("shield_break")
+		_show_banner("SHIELD BROKE")
+		return
+	Sfx.play("hurt")
+	_lose_life()
+
+
+# CHEST REWARDS (chest.gd picks one and calls this)
+
+const REWARD_TEXT = {
+	"pad": "+1 BOUNCE PAD",
+	"heart": "+1 LIFE",
+	"speed": "SPEED BOOST  ·  10 s",
+	"dash": "QUICK DASH  ·  12 s",
+	"shield": "SHIELD  ·  BLOCKS ONE HIT",
+}
+
+func give_reward(reward: String) -> void:
+	match reward:
+		"pad":
+			pads_remaining += 1
+		"heart":
+			lives = min(lives + 1, MAX_LIVES)
+			shown_lives = lives
+		"speed":
+			player.speed_boost_timer = 10.0
+		"dash":
+			player.dash_boost_timer = 12.0
+		"shield":
+			player.has_shield = true
+	_show_banner("TREASURE:  " + REWARD_TEXT[reward])
+	Sfx.play("rare_reward" if reward in ["heart", "shield"] else "reward")
+	_update_hud()
 
 
 # LESSONS: reaching a teaching NPC
@@ -339,11 +453,11 @@ func _lose_life() -> void:
 
 	# Placed pads and inventory stay unchanged
 
+	_shatter_player()
+
 	if lives <= 0:
 		Sfx.play("game_over")
-		_show_banner("THE BETWEEN CLAIMS YOU")
-		await get_tree().create_timer(1.5).timeout  # respawning stays true, so nothing else happens meanwhile
-		get_tree().reload_current_scene()
+		_show_game_over()
 		return
 
 	Sfx.play("death")
@@ -364,17 +478,179 @@ func _lose_life() -> void:
 		_show_banner("DASH UNLOCKED  ·  PRESS SHIFT")
 		Sfx.play("unlock")
 
-	call_deferred("_respawn_player")
+	# Fade to black, respawn at the lantern, fade back in
+	var fade = create_tween()
+	fade.tween_interval(DEATH_PAUSE)
+	fade.tween_property(fade_rect, "modulate:a", 1.0, FADE_OUT)
+	fade.tween_callback(_respawn_player)
+	fade.tween_property(fade_rect, "modulate:a", 0.0, FADE_IN)
+
+
+# DEATH EFFECTS
+# The scientist shatters into shards, a little soul-light floats up, the screen edges
+# flash red and the camera shakes. The player is frozen and hidden until the respawn.
+
+func _shatter_player() -> void:
+	player.set_physics_process(false)
+	player.velocity = Vector2.ZERO
+	player.get_node("Sprite2D").visible = false
+	var spot = player.global_position
+
+	var shards = CPUParticles2D.new()
+	shards.position = spot
+	shards.emitting = true
+	shards.one_shot = true
+	shards.explosiveness = 1.0
+	shards.amount = 36
+	shards.lifetime = 0.9
+	shards.spread = 180.0
+	shards.initial_velocity_min = 70.0
+	shards.initial_velocity_max = 170.0
+	shards.gravity = Vector2(0, 320)
+	shards.angular_velocity_min = -360.0
+	shards.angular_velocity_max = 360.0
+	shards.scale_amount_min = 3.0
+	shards.scale_amount_max = 5.0
+	var colors = Gradient.new()
+	colors.colors = PackedColorArray([Color.WHITE, GLOW, Color(GLOW, 0.0)])
+	colors.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	shards.color_ramp = colors
+	shards.material = CanvasItemMaterial.new()
+	shards.material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD  # glowing shards
+	effects_layer.add_child(shards)
+	get_tree().create_timer(1.2).timeout.connect(shards.queue_free)
+
+	# A burst of light where you fell (lights shine through the level's darkness)
+	var flash = PointLight2D.new()
+	flash.texture = _soft_dot()
+	flash.texture_scale = 1.6
+	flash.color = Color("#CFE8FF")
+	flash.energy = 3.0
+	flash.position = spot
+	add_child(flash)
+	var dim = create_tween()
+	dim.tween_property(flash, "energy", 0.0, 0.45)
+	dim.tween_callback(flash.queue_free)
+
+	# The soul: a small light that drifts up and fades
+	var soul = PointLight2D.new()
+	soul.texture = _soft_dot()
+	soul.texture_scale = 0.35
+	soul.color = GLOW
+	soul.energy = 1.6
+	soul.position = spot
+	add_child(soul)
+	var rise = create_tween()
+	rise.tween_property(soul, "position:y", spot.y - 60, 0.9).set_ease(Tween.EASE_OUT)
+	rise.parallel().tween_property(soul, "energy", 0.0, 0.9)
+	rise.tween_callback(soul.queue_free)
+
+	# Red flash at the edges + camera shake
+	hurt_vignette.modulate.a = 0.8
+	create_tween().tween_property(hurt_vignette, "modulate:a", 0.0, 0.6)
+	var camera = player.get_node("Camera2D")
+	var shake = create_tween()
+	for i in 6:
+		shake.tween_property(camera, "offset", Vector2(randf_range(-6, 6), randf_range(-5, 5)), 0.04)
+	shake.tween_property(camera, "offset", Vector2.ZERO, 0.05)
+
+
+# Coming back: a white flash and the sprite stretches back into shape
+func _reform_player() -> void:
+	var sprite = player.get_node("Sprite2D")
+	sprite.visible = true
+	sprite.scale = Vector2(0.3, 1.8)
+	sprite.self_modulate = Color(3, 3, 3)
+	var reform = create_tween()
+	reform.tween_property(sprite, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	reform.parallel().tween_property(sprite, "self_modulate", Color.WHITE, 0.4)
+
+
+func _soft_dot() -> GradientTexture2D:
+	var dot = GradientTexture2D.new()
+	dot.width = 64
+	dot.height = 64
+	dot.fill = GradientTexture2D.FILL_RADIAL
+	dot.fill_from = Vector2(0.5, 0.5)
+	dot.fill_to = Vector2(0.5, 0.0)
+	dot.gradient = Gradient.new()
+	dot.gradient.colors = PackedColorArray([Color.WHITE, Color(1, 1, 1, 0)])
+	return dot
+
+
+# GAME OVER SCREEN
+# Fades in over the frozen level with the run's numbers, then the level restarts
+# (everything resets: lives, powers, pads, chests). Space or Enter restarts sooner.
+
+func _show_game_over() -> void:
+	var screen = Control.new()
+	screen.name = "GameOver"
+	screen.set_anchors_preset(Control.PRESET_FULL_RECT)
+	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	screen.modulate.a = 0.0
+	hud_layer.add_child(screen)
+	game_over_screen = screen
+
+	var shade = ColorRect.new()
+	shade.color = Color(0.02, 0.0, 0.03, 0.9)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	screen.add_child(shade)
+
+	var column = VBoxContainer.new()
+	column.set_anchors_preset(Control.PRESET_CENTER)
+	column.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	column.grow_vertical = Control.GROW_DIRECTION_BOTH
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 14)
+	screen.add_child(column)
+
+	var title = _screen_label("THE BETWEEN CLAIMS YOU", 46, Color("#F2D6DC"), column)
+	title.add_theme_color_override("font_outline_color", Color(0.55, 0.0, 0.08, 0.6))
+	title.add_theme_constant_override("outline_size", 14)
+	var powers = int(pad_unlocked) + int(player.double_jump_unlocked) + int(player.dash_unlocked)
+	_screen_label("Deaths  %d     ·     Powers found  %d / 3" % [deaths, powers], 18, Color("#8D97B3"), column)
+	_screen_label("Your echo gathers itself to try again...", 16, Color("#5E6A8A"), column)
+
+	var appear = create_tween()
+	appear.tween_interval(0.35)
+	appear.tween_property(screen, "modulate:a", 1.0, 0.8)
+	title.pivot_offset = Vector2(title.get_combined_minimum_size().x / 2, 30)
+	title.scale = Vector2(1.15, 1.15)
+	appear.parallel().tween_property(title, "scale", Vector2.ONE, 1.6).set_ease(Tween.EASE_OUT)
+	get_tree().create_timer(GAME_OVER_TIME).timeout.connect(_restart_after_game_over)
+
+
+func _screen_label(text: String, size: int, color: Color, parent: Control) -> Label:
+	var label = Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_override("font", FONT)
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", color)
+	parent.add_child(label)
+	return label
+
+
+func _restart_after_game_over() -> void:
+	if is_inside_tree() and is_instance_valid(game_over_screen):
+		get_tree().reload_current_scene()
 
 
 # RESPAWN
 
 func _respawn_player() -> void:
+	if not is_inside_tree():
+		return  # the level was already closed (restart or menu) before this respawn ran
 	player.global_position = spawn_position
 	player.reset_after_respawn()
+	player.set_physics_process(true)
+	_reform_player()
 	player.get_node("Camera2D").reset_smoothing()  # jump straight there, don't glide across the level
+	get_tree().call_group("enemies", "reset_after_player_death")  # living enemies go home
+	get_tree().call_group("arrows", "queue_free")                 # no arrows left in the air
 
 	respawning = false
+	respawn_grace = RESPAWN_GRACE
 	_update_hud()
 
 
