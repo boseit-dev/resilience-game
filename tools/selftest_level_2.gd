@@ -96,6 +96,8 @@ func _test_intro() -> void:
 	_check("Intro: SPACE skips it, control comes back at the start",
 		level.player.is_physics_processing() and level.player.global_position.distance_to(level.spawn_position) < 4.0
 		and level.banner.text.begins_with("CHAPTER II") and level.hud_layer.visible)
+	await _frames(40)
+	_check("Intro: the terminal warning text is gone afterwards", level.get_children().filter(func(n): return n is Label).is_empty())
 	await _fresh(Vector2(140, 368), true, L2)
 	_check("Intro: does not play again (restarts, Continue)", level.player.is_physics_processing() and not level.has_node("Intro"))
 

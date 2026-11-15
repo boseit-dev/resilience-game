@@ -249,15 +249,16 @@ func _build_main_page() -> Control:
 	return page
 
 
-# One button per level: unlocked levels can be played, the rest are greyed out
+# One button per level: every level that is built can be played (handy for testing and demos);
+# the rest say "Coming soon". Continue still follows the story save.
 func _build_levels_page() -> Control:
 	var page = _page()
 	for n in range(1, SaveGame.LEVEL_COUNT + 1):
 		var title = "%d   %s" % [n, SaveGame.LEVEL_NAMES[n - 1].capitalize()]
 		var button = _menu_button(page, title, _go.bind(SaveGame.level_scene(n)))
 		button.add_theme_font_size_override("font_size", 19)
-		if not SaveGame.can_play(n):
-			button.text = "%d   %s" % [n, "Locked" if n > SaveGame.unlocked_level else "Coming soon"]
+		if not ResourceLoader.exists(SaveGame.level_scene(n)):
+			button.text = "%d   Coming soon" % n
 			_lock(button)
 	_menu_button(page, "Back", _show_page.bind("main"))
 	page.set_meta("first", page.get_child(0))

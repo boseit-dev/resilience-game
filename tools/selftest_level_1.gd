@@ -877,7 +877,8 @@ func _test_save_and_level_select() -> void:
 	_use_test_save()
 	var menu = await _fresh_menu()
 	var levels = menu.pages["levels"]
-	_check("Level Select: only Level 1 can be picked at first", not levels.get_child(0).disabled and levels.get_child(1).disabled and levels.get_child(1).text.ends_with("Locked"))
+	_check("Level Select: every built level (1 and 2) can be picked, Level 3 says Coming soon",
+		not levels.get_child(0).disabled and not levels.get_child(1).disabled and levels.get_child(2).disabled and levels.get_child(2).text.ends_with("Coming soon"))
 	menu._show_page("main")
 	menu.pages["main"].get_child(2).emit_signal("pressed")   # Tutorial
 	await create_timer(1.5).timeout
@@ -901,8 +902,8 @@ func _test_save_and_level_select() -> void:
 	menu = await _fresh_menu()
 	var resume = menu.pages["main"].get_child(0)
 	_check("Continue: after Level 1 it is enabled (goes to Level 2)", not resume.disabled and save.current_level == 2)
-	_check("Level Select: Level 2 can be played, Level 3 is locked",
-		not menu.pages["levels"].get_child(1).disabled and menu.pages["levels"].get_child(2).text.ends_with("Locked"))
+	_check("Level Select: Level 2 can be played, Level 3 is not built yet",
+		not menu.pages["levels"].get_child(1).disabled and menu.pages["levels"].get_child(2).text.ends_with("Coming soon"))
 	save.current_level = 1
 	menu = await _fresh_menu()
 	_check("Continue: with a save it's enabled and selected", not menu.pages["main"].get_child(0).disabled and root.gui_get_focus_owner().text == "Continue Game")

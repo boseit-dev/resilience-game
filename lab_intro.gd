@@ -91,7 +91,9 @@ func _finish() -> void:
 	player.global_position = level.spawn_position
 	player.reset_physics_interpolation()
 	player.get_node("Camera2D").offset = Vector2.ZERO
-	terminal.visible_ratio = 1.0
+	var fade = terminal.create_tween()   # the warning goes away, so it never covers a speech bubble
+	fade.tween_property(terminal, "modulate:a", 0.0, 0.6)
+	fade.tween_callback(terminal.queue_free)
 	level.hud_layer.show()
 	level._show_banner(TITLE)
 	bars.queue_free()
