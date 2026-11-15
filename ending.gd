@@ -190,6 +190,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not (event.pressed and not event.echo and event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE]):
 		return
 	get_viewport().set_input_as_handled()
+	if t < 1.5 or (credits_layer.visible and t < 56.0):   # a leftover jump press must not skip it all
+		return
 	if credits_layer.visible:
 		_finish()   # back to the main menu
 	else:

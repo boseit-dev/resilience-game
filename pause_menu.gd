@@ -95,15 +95,15 @@ func _build_options() -> void:
 	options.add_child(title)
 	music_slider = _slider(options, "Music", Settings.music_volume, func(v):
 		Settings.music_volume = v
-		Settings.apply()
+		Settings._set_bus("Music", v)
 		Settings.save())
 	_slider(options, "Sounds", Settings.sound_volume, func(v):
 		Settings.sound_volume = v
-		Settings.apply()
+		Settings._set_bus("Sounds", v)
 		Settings.save()
 		Sfx.play("talk"))   # so you can hear the new loudness
 	full_button = _button(options, _fullscreen_text(), func():
-		Settings.fullscreen = not Settings.fullscreen
+		Settings.fullscreen = not DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN   # the real window (Esc in a browser leaves fullscreen)
 		Settings.apply()
 		Settings.save()
 		full_button.text = _fullscreen_text())
@@ -115,6 +115,7 @@ func _show_options(show: bool) -> void:
 	options.visible = show
 	column.visible = not show
 	if show:
+		full_button.text = _fullscreen_text()
 		music_slider.value = Settings.music_volume
 		music_slider.grab_focus()
 	else:
@@ -122,7 +123,7 @@ func _show_options(show: bool) -> void:
 
 
 func _fullscreen_text() -> String:
-	return "Fullscreen:  " + ("On" if Settings.fullscreen else "Off")
+	return "Fullscreen:  " + ("On" if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN else "Off")
 
 
 func _slider(parent: Control, text: String, value: float, on_change: Callable) -> HSlider:

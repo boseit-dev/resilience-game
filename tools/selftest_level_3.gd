@@ -494,7 +494,15 @@ func _test_ending() -> void:
 	await _frames(2)
 	await _tap(KEY_SPACE)
 	await _frames(10)
+	_check("Ending: a SPACE press in the first moment doesn't skip it (a leftover jump)", not ending.credits_layer.visible)
+	ending.t = 2.0
+	await _tap(KEY_SPACE)
+	await _frames(10)
 	_check("Ending: SPACE skips to the credits", ending.credits_layer.visible)
+	await _tap(KEY_SPACE)
+	await _frames(5)
+	_check("Credits: an instant second SPACE doesn't skip the credits too", current_scene == ending)
+	ending.t = 57.0
 	await _tap(KEY_SPACE)
 	await create_timer(1.2).timeout
 	var save = root.get_node("SaveGame")

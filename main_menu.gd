@@ -235,6 +235,7 @@ func _build_main_page() -> Control:
 	_menu_button(page, "Controls", _show_page.bind("controls"))
 	quit_button = _menu_button(page, "Quit Game", _open_quit_dialog)
 	quit_button.mouse_filter = Control.MOUSE_FILTER_IGNORE  # the mouse can't catch it until it's tired
+	quit_button.visible = not OS.has_feature("web")   # in a browser, quitting only leaves a black page
 
 	# Continue is greyed out until there is a story save
 	if not SaveGame.has_progress():
@@ -242,7 +243,7 @@ func _build_main_page() -> Control:
 	page.set_meta("first", resume if SaveGame.has_progress() else new_game)
 
 	# Up/Down go down the list (and wrap), skipping greyed-out buttons, wherever Quit has run off to
-	main_buttons.assign(page.get_children().filter(func(b): return not b.disabled))
+	main_buttons.assign(page.get_children().filter(func(b): return not b.disabled and b.visible))
 	for i in main_buttons.size():
 		var button = main_buttons[i]
 		button.focus_neighbor_top = button.get_path_to(main_buttons[i - 1])
@@ -279,21 +280,22 @@ func _build_options_page() -> Control:
 	var page = _page()
 	var music = _slider_row(page, "Music", Settings.music_volume, func(v):
 		Settings.music_volume = v
-		Settings.apply()
+		Settings._set_bus("Music", v)
 		Settings.save())
 	_slider_row(page, "Sounds", Settings.sound_volume, func(v):
 		Settings.sound_volume = v
-		Settings.apply()
+		Settings._set_bus("Sounds", v)
 		Settings.save()
 		Sfx.play("talk"))  # so you can hear the new loudness
 	var full = _menu_button(page, "", func(): pass)
 	full.text = _fullscreen_text()
 	full.pressed.connect(func():
-		Settings.fullscreen = not Settings.fullscreen
+		Settings.fullscreen = not DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN   # the real window (Esc in a browser leaves fullscreen)
 		Settings.apply()
 		Settings.save()
 		full.text = _fullscreen_text()
 		_on_focus_changed(full))
+	page.visibility_changed.connect(func(): full.text = _fullscreen_text())
 	_menu_button(page, "Back", _show_page.bind("main"))
 	page.set_meta("first", music)
 	return page
@@ -344,6 +346,7 @@ func _on_new_game(button: Button) -> void:
 		_on_focus_changed(button)
 		return
 	SaveGame.start_new_game()
+	load("res://lab_intro.gd").seen.clear()   # a new story shows the chapter openings again
 	_go(SaveGame.STORY_START)
 
 
@@ -368,7 +371,7 @@ func _on_quit() -> void:
 
 
 func _fullscreen_text() -> String:
-	return "Fullscreen:  " + ("On" if Settings.fullscreen else "Off")
+	return "Fullscreen:  " + ("On" if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN else "Off")
 
 
 func _on_focus_changed(control: Control) -> void:
@@ -398,6 +401,8 @@ func _focus(control: Control) -> void:
 # ---------- easter egg: the scared Quit button ----------
 
 func _check_quit_escape(mouse: Vector2) -> void:
+	if not quit_button.visible:
+		return
 	if quit_escapes >= QUIT_ESCAPES_UNTIL_TIRED or quit_moving or busy:
 		return
 	if is_instance_valid(quit_dialog) or current_page != "main":
