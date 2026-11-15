@@ -139,7 +139,7 @@ offset_left = -110.0
 offset_top = -100.0
 offset_right = 110.0
 offset_bottom = -70.0
-text = "TUTORIAL COMPLETE"
+text = "LEVEL 2 COMING SOON"
 label_settings = SubResource("LabelSettings_ilnwx")
 horizontal_alignment = 1
 

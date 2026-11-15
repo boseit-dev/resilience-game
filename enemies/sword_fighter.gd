@@ -17,8 +17,6 @@ enum State { PATROL, CHASE, WINDUP, SWING, COOLDOWN }
 var state = State.PATROL
 var timer = 0.0
 var sword: Polygon2D
-var frames: Array[Texture2D] = []
-var walk_time = 0.0
 
 
 func build() -> void:
@@ -70,7 +68,7 @@ func think(delta: float) -> void:
 			if timer <= 0.0:
 				state = State.CHASE
 	_pose_sword()
-	_animate_walk(delta)
+	animate_walk(delta, 0.15)
 
 
 # The swing only hurts if you're in front of it, at arm's length, at the same height
@@ -92,12 +90,6 @@ func _pose_sword() -> void:
 	sword.rotation_degrees = angle * direction
 
 
-func _animate_walk(delta: float) -> void:
-	if velocity.x != 0.0:
-		walk_time += delta
-		sprite.texture = frames[int(walk_time / 0.15) % 2]
-	else:
-		sprite.texture = frames[0]
 
 
 func on_stomped() -> void:

@@ -1,7 +1,9 @@
 extends Control
 
 # RESILIENCE - MAIN MENU
-# Pages: main (Start / Options / Controls / Quit), options (volumes, fullscreen), controls.
+# Pages: main (Continue / New Game / Tutorial / Level Select / Options / Controls / Quit),
+# levels (the ones you've unlocked), options (volumes, fullscreen), controls.
+# Story progress comes from the SaveGame autoload (save_game.gd).
 # Up/Down (or W/S, or the mouse) to choose, Enter/Space/click to pick, Esc to go back.
 # Everything is built in code below, section by section, like the HUD in level_1.gd.
 #
@@ -11,7 +13,7 @@ extends Control
 
 const FONT = preload("res://assets/fonts/Cinzel.ttf")
 const Ornament = preload("res://menu_ornament.gd")
-const FIRST_LEVEL = "res://intro_cutscene.tscn"   # the intro plays first, then Level 1
+const TUTORIAL = "res://tutorial.tscn"
 
 const WHITE = Color("#F2F6FF")
 const DIM = Color("#8D97B3")
@@ -33,6 +35,7 @@ var corner_left: Label
 var corner_right: Label
 
 var main_buttons: Array[Button] = []
+var new_game_armed = false  # with a save, New Game must be pressed twice (so it isn't erased by accident)
 var quit_button: Button
 var quit_escapes = 0
 var quit_moving = false
@@ -59,6 +62,7 @@ func _ready() -> void:
 		part.reparent(bg)
 	_build_title()
 	pages["main"] = _build_main_page()
+	pages["levels"] = _build_levels_page()
 	pages["options"] = _build_options_page()
 	pages["controls"] = _build_controls_page()
 	_build_corner_text()
@@ -218,20 +222,53 @@ func _build_title() -> void:
 
 func _build_main_page() -> Control:
 	var page = _page()
-	var start = _menu_button(page, "Start Game", _on_start)
+	var resume = _menu_button(page, "Continue Game", func(): _go(SaveGame.level_scene(SaveGame.current_level)))
+	var new_game = _menu_button(page, "New Game", func(): pass)
+	new_game.pressed.connect(_on_new_game.bind(new_game))
+	new_game.focus_exited.connect(func():
+		new_game_armed = false
+		new_game.text = "New Game")
+	_menu_button(page, "Tutorial", _go.bind(TUTORIAL))
+	_menu_button(page, "Level Select", _show_page.bind("levels"))
 	_menu_button(page, "Options", _show_page.bind("options"))
 	_menu_button(page, "Controls", _show_page.bind("controls"))
 	quit_button = _menu_button(page, "Quit Game", _open_quit_dialog)
 	quit_button.mouse_filter = Control.MOUSE_FILTER_IGNORE  # the mouse can't catch it until it's tired
-	page.set_meta("first", start)
 
-	# Up/Down always go Start -> Options -> Controls -> Quit (and wrap), wherever Quit has run off to
-	main_buttons.assign(page.get_children())
+	# Continue is greyed out until there is a story save
+	if not SaveGame.has_progress():
+		_lock(resume)
+	page.set_meta("first", resume if SaveGame.has_progress() else new_game)
+
+	# Up/Down go down the list (and wrap), skipping greyed-out buttons, wherever Quit has run off to
+	main_buttons.assign(page.get_children().filter(func(b): return not b.disabled))
 	for i in main_buttons.size():
 		var button = main_buttons[i]
 		button.focus_neighbor_top = button.get_path_to(main_buttons[i - 1])
 		button.focus_neighbor_bottom = button.get_path_to(main_buttons[(i + 1) % main_buttons.size()])
 	return page
+
+
+# One button per level: unlocked levels can be played, the rest are greyed out
+func _build_levels_page() -> Control:
+	var page = _page()
+	for n in range(1, SaveGame.LEVEL_COUNT + 1):
+		var title = "%d   %s" % [n, SaveGame.LEVEL_NAMES[n - 1].capitalize()]
+		var button = _menu_button(page, title, _go.bind(SaveGame.level_scene(n)))
+		button.add_theme_font_size_override("font_size", 19)
+		if not SaveGame.can_play(n):
+			button.text = "%d   %s" % [n, "Locked" if n > SaveGame.unlocked_level else "Coming soon"]
+			_lock(button)
+	_menu_button(page, "Back", _show_page.bind("main"))
+	page.set_meta("first", page.get_child(0))
+	return page
+
+
+# A greyed-out button that can't be picked
+func _lock(button: Button) -> void:
+	button.disabled = true
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func _build_options_page() -> Control:
@@ -294,14 +331,27 @@ func _show_page(page_name: String) -> void:
 
 # ---------- actions ----------
 
-func _on_start() -> void:
+# New Game: starts the story from the lab accident. With a save, the first press only warns.
+func _on_new_game(button: Button) -> void:
+	if SaveGame.has_progress() and not new_game_armed:
+		new_game_armed = true
+		button.text = "Erase your save?  Press again"
+		Sfx.play("talk", 0.7)
+		_on_focus_changed(button)
+		return
+	SaveGame.start_new_game()
+	_go(SaveGame.STORY_START)
+
+
+# Fade out to another scene (a level, the tutorial or the intro)
+func _go(scene: String) -> void:
 	if busy:
 		return
 	busy = true
 	Sfx.play("checkpoint")  # a deep bell
 	var out = create_tween()
 	out.tween_property(fade, "color:a", 1.0, 0.9)
-	out.tween_callback(func(): get_tree().change_scene_to_file(FIRST_LEVEL))
+	out.tween_callback(func(): get_tree().change_scene_to_file(scene))
 
 
 func _on_quit() -> void:
@@ -572,10 +622,10 @@ func _close_quit_dialog() -> void:
 
 func _page() -> VBoxContainer:
 	var page = VBoxContainer.new()
-	page.position = Vector2(screen.x / 2 - 260, 330)
+	page.position = Vector2(screen.x / 2 - 260, 300)
 	page.size = Vector2(520, 0)
 	page.alignment = BoxContainer.ALIGNMENT_BEGIN
-	page.add_theme_constant_override("separation", 6)
+	page.add_theme_constant_override("separation", 1)
 	add_child(page)
 	return page
 
@@ -667,7 +717,7 @@ func _ornament(kind: int, pos: Vector2, parent: Node) -> Control:
 
 
 func _build_corner_text() -> void:
-	corner_left = _label("Level 1 Demo", 13, Color(DIM, 0.7), self)
+	corner_left = _label("Hackathon build", 13, Color(DIM, 0.7), self)
 	corner_right = _label("Haven Sydney", 13, Color(DIM, 0.7), self)
 	corner_right.size = Vector2(122, 20)
 	corner_right.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

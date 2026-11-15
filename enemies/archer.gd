@@ -55,7 +55,7 @@ func _fire() -> void:
 	if not sees_player(SEE_DISTANCE + 40.0, 220.0):
 		return  # you ducked behind something: hold the arrow
 	var arrow = ARROW.new()
-	var from = global_position + Vector2(direction * 8, -10)
+	var from = global_position + Vector2(direction * 8, -10) * SIZE
 	arrow.velocity = (player.global_position - from).normalized() * ARROW_SPEED
 	get_parent().add_child(arrow)  # not a child of the archer, so it keeps flying if the archer dies
 	arrow.global_position = from

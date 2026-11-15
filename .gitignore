@@ -39,3 +39,4 @@ backups/
 *.jks
 *.p12
 export_credentials.cfg
+docs/

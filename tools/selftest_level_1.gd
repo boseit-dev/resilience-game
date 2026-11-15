@@ -1,7 +1,8 @@
 extends SceneTree
-# RESILIENCE - LEVEL 1 SELF-TEST
+# RESILIENCE - SELF-TEST (Level 1, the tutorial, the menu and the story save)
 # A robot plays each challenge and checks it works the way the design says
 # (for example: a plain jump can't cross Thorn Rise, the Bounce Pad can).
+# It uses its own save file (user://save_selftest.cfg), so your real save is never touched.
 # Run from the project folder:
 #   godot --headless --path . --script tools/selftest_level_1.gd
 # Prints PASS/FAIL for each check. Exit code 1 if anything fails.
@@ -12,6 +13,7 @@ var failures := 0
 
 
 func _initialize() -> void:
+	_use_test_save()
 	await _test_sounds()
 	await _test_spike_garden()
 	await _test_thorn_rise()
@@ -30,6 +32,8 @@ func _initialize() -> void:
 	await _test_npcs()
 	await _test_pause()
 	await _test_lessons()
+	await _test_tutorial()
+	await _test_save_and_level_select()
 	await _test_menu()
 	await _test_quit_egg()
 	print("\n", "ALL PASSED" if failures == 0 else "%d FAILED" % failures)
@@ -618,7 +622,12 @@ func _test_warden_and_portal() -> void:
 	_check("Beating the Warden opens the portal", portal.is_open)
 	level.player.global_position = portal.global_position + Vector2(0, -13)
 	await _frames(10)
-	_check("Portal shows 'Tutorial Complete' while level_2.tscn doesn't exist", portal.get_node("Message").visible)
+	_check("Portal shows 'Level 2 coming soon' while level_2.tscn doesn't exist", portal.get_node("Message").visible)
+	var save = root.get_node("SaveGame")
+	_check("Beating the Warden saves: Level 1 done, Level 2 unlocked, 1 fragment, powers kept",
+		save.completed == [1] and save.unlocked_level == 2 and save.fragments == 1 and save.current_level == 2
+		and save.powers.size() == int(level.pad_unlocked) + int(level.player.double_jump_unlocked) + int(level.player.dash_unlocked))
+	_use_test_save()
 	await _frames(150)
 	_check("Level music returns after the Warden dies", root.get_node("Sfx").music.stream.resource_path.ends_with("level_1_theme.ogg"))
 
@@ -747,18 +756,206 @@ func _test_pause() -> void:
 		current_scene and current_scene != old_level and current_scene.scene_file_path == "res://level_1.tscn" and not paused)
 
 
+# ---------- the tutorial (tutorial.tscn): a robot plays the whole course ----------
+
+func _tutorial_on_floor_until(x_min: float, x_max: float, y_max: float, frames: int) -> bool:
+	for i in frames:
+		await physics_frame
+		if _landed_on(x_min, x_max, y_max):
+			return true
+	return false
+
+
+func _test_tutorial() -> void:
+	const T = "res://tutorial.tscn"
+	await _fresh(Vector2(120, 368), false, T)
+	_check("Tutorial: plays its own calm music", root.get_node("Sfx").music_target == level.CALM_MUSIC)
+	_check("Tutorial: starts with no powers and the movement lesson",
+		not level.pad_unlocked and not level.player.double_jump_unlocked and not level.player.dash_unlocked and level.section == 0)
+	await _walk_until(650, 200)
+	await _leap(700, -1, false, "")
+	_check("Tutorial 2: jump the first safe gap", _landed_on(820, 1050, 375) and level.section == 1)
+	await _leap(1000, -1, false, "")
+	_check("Tutorial 2: jump up the step", _landed_on(1050, 1250, 315))
+	await _leap(1250, -1, false, "")
+	_check("Tutorial 2: jump the second safe gap", _landed_on(1380, 1600, 375))
+	await _fresh(Vector2(560, 368), false, T)
+	await _walk_until(760, 120)
+	await _after_death()
+	await _frames(20)
+	_check("Tutorial 2: the gaps have spikes, and you come back at the lantern just before them",
+		level.deaths == 1 and level.player.global_position.distance_to(Vector2(620, 367)) < 30)
+
+	# 3 Bounce Pads: a plain jump can't reach the ledge, a pad can
+	await _fresh(Vector2(1640, 368), false, T)
+	_check("Tutorial 3: reaching the section switches on the Bounce Pad", level.pad_unlocked and level.pads_remaining == 3)
+	await _leap(1960, -1, false, "")
+	_check("Tutorial 3: a plain jump can't reach the ledge", not _landed_on(2000, 2300, 275))
+	await _fresh(Vector2(1780, 368), false, T)
+	await _tap(KEY_E)
+	_key(KEY_RIGHT, true)
+	var padded = await _tutorial_on_floor_until(2000, 2300, 275, 150)
+	_key(KEY_RIGHT, false)
+	_check("Tutorial 3: a placed pad throws you onto the ledge", padded and level.placed_pads.size() == 1)
+	level.pads_remaining = 0
+	await _frames(3)
+	_check("Tutorial 3: training pads refill when you run out", level.pads_remaining == 3 and level.placed_pads.size() == 1)
+
+	# 4 Double Jump
+	await _fresh(Vector2(2700, 368), false, T)
+	_check("Tutorial 4: double jump switched on", level.player.double_jump_unlocked)
+	await _leap(2850, -1, true, "")
+	_check("Tutorial 4: double jump up the tall step", _landed_on(2900, 3100, 235))
+	await _fresh(Vector2(3150, 368), false, T)
+	await _leap(3300, -1, false, "")
+	_check("Tutorial 4: one jump can't cross the wide gap", not _landed_on(3580, 3800, 375))
+	await _fresh(Vector2(3150, 368), false, T)
+	await _leap(3300, -1, true, "")
+	_check("Tutorial 4: a double jump crosses it", _landed_on(3580, 3800, 375) and level.deaths == 0)
+
+	# 5 Dash: across the gap under the low ceiling, then through the crates
+	await _fresh(Vector2(3850, 368), false, T)
+	_check("Tutorial 5: dash switched on", level.player.dash_unlocked)
+	await _leap(4000, -1, false, "edge")
+	_check("Tutorial 5: a dash crosses the low gap", _landed_on(4120, 4600, 375))
+	await _walk_until(4400, 90)
+	_check("Tutorial 5: walking can't get through the crates", level.player.global_position.x < 4300)
+	_key(KEY_RIGHT, true)
+	await _tap(KEY_SHIFT)
+	await _frames(30)
+	_key(KEY_RIGHT, false)
+	_check("Tutorial 5: a dash smashes them", level.player.global_position.x > 4310)
+
+	# 6 Combat (with the enemies)
+	await _fresh(Vector2(4600, 368), true, T)
+	level.player.global_position = Vector2(4645, 368)
+	await _frames(10)
+	_check("Tutorial 6: a lantern before the enemies (playtest feedback)", level.spawn_position.distance_to(Vector2(4640, 367)) < 5)
+	var dummy = level.get_node("Map").get_children().filter(func(n): return n.is_in_group("enemies") and n.harmless)
+	_check("Tutorial 6: there is one harmless training dummy", dummy.size() == 1)
+	level.player.global_position = Vector2(4740, 368)
+	await _frames(40)
+	_check("Tutorial 6: touching the dummy doesn't hurt", level.deaths == 0)
+	level.player.global_position = Vector2(4760, 300)
+	level.player.velocity = Vector2.ZERO
+	await _frames(40)
+	_check("Tutorial 6: landing on its head defeats it", not is_instance_valid(dummy[0]) or dummy[0].defeated)
+
+	# 7 Lives: in training you never run out
+	await _fresh(Vector2(5700, 368), false, T)
+	level.lives = 1
+	level._lose_life()
+	await _after_death()
+	await create_timer(1.2).timeout
+	_check("Tutorial 7: losing your last life gives them back (no Game Over)",
+		level.lives == level.MAX_LIVES and not is_instance_valid(level.game_over_screen))
+	_check("Tutorial 7: you come back at the lantern you touched", level.player.global_position.distance_to(level.spawn_position) < 40)
+
+	# 8 Final challenge: spike pit, pad + double jump wall, crates, finish
+	await _fresh(Vector2(6230, 368), false, T)
+	await _leap(6300, -1, true, "")
+	_check("Tutorial 8: double jump over the spike pit", _landed_on(6560, 6900, 375) and level.deaths == 0)
+	await _fresh(Vector2(6760, 368), false, T)
+	await _leap(6880, -1, true, "")
+	_check("Tutorial 8: a double jump alone can't climb the wall", not _landed_on(6900, 7150, 185))
+	await _fresh(Vector2(6740, 368), false, T)
+	await _tap(KEY_E)
+	_key(KEY_RIGHT, true)
+	var doubled = false
+	var climbed = false
+	for i in 200:
+		await physics_frame
+		if not doubled and level.player.global_position.y < 300 and level.player.velocity.y >= 0.0:
+			await _tap(KEY_SPACE)
+			doubled = true
+		if _landed_on(6900, 7150, 185):
+			climbed = true
+			break
+	_key(KEY_RIGHT, false)
+	_check("Tutorial 8: pad, then double jump at the top, climbs the wall", climbed)
+	await _fresh(Vector2(7200, 368), false, T)
+	_key(KEY_RIGHT, true)
+	await _frames(15)
+	await _tap(KEY_SHIFT)
+	for i in 120:
+		await physics_frame
+		if level.finished:
+			break
+	_key(KEY_RIGHT, false)
+	await create_timer(0.8).timeout
+	var save = root.get_node("SaveGame")
+	_check("Tutorial 8: through the crates to the end: TUTORIAL COMPLETE", level.finished and is_instance_valid(level.complete_screen))
+	_check("Tutorial: finishing it doesn't change the story save", save.current_level == 0 and not FileAccess.file_exists(save.path))
+	var focused = root.gui_get_focus_owner()
+	_check("Tutorial: the end offers Start New Game (selected) and Main Menu", focused is Button and focused.text == "Start New Game")
+	await _tap(KEY_DOWN)
+	await _tap(KEY_ENTER)
+	await create_timer(1.2).timeout
+	_check("Tutorial: Main Menu goes back to the menu", current_scene != null and current_scene.name == "MainMenu")
+
+
+# ---------- the story save, Continue and Level Select ----------
+
+func _test_save_and_level_select() -> void:
+	var save = root.get_node("SaveGame")
+	_use_test_save()
+	var menu = await _fresh_menu()
+	var levels = menu.pages["levels"]
+	_check("Level Select: only Level 1 can be picked at first", not levels.get_child(0).disabled and levels.get_child(1).disabled and levels.get_child(1).text.ends_with("Locked"))
+	menu._show_page("main")
+	menu.pages["main"].get_child(2).emit_signal("pressed")   # Tutorial
+	await create_timer(1.5).timeout
+	_check("Menu: Tutorial opens the training course", current_scene != null and current_scene.scene_file_path == "res://tutorial.tscn")
+
+	save.complete_level(1, ["pad", "double_jump", "dash"])
+	save.unlocked_level = 1   # forget it in memory...
+	save.load_save()          # ...and read it back from the file
+	_check("Save: progress is written and read back", save.unlocked_level == 2 and save.completed == [1] and save.current_level == 2 and save.powers.size() == 3)
+	save.complete_level(1, [])
+	_check("Save: beating a level twice doesn't give a second fragment", save.fragments == 1)
+	var config = ConfigFile.new()
+	config.set_value("story", "unlocked_level", 99)
+	config.set_value("story", "current_level", -4)
+	config.set_value("story", "completed", ["junk", 3, 12])
+	config.save(save.path)
+	save.load_save()
+	_check("Save: a damaged save is pulled back into range", save.unlocked_level == 5 and save.current_level == 0 and save.completed == [3])
+	_use_test_save()
+	save.complete_level(1, ["pad"])
+	menu = await _fresh_menu()
+	var resume = menu.pages["main"].get_child(0)
+	_check("Continue: still greyed out while Level 2 isn't built yet", resume.disabled == not ResourceLoader.exists("res://level_2.tscn"))
+	_check("Level Select: Level 2 shows as unlocked but not built yet", menu.pages["levels"].get_child(1).text.ends_with("Coming soon"))
+	save.current_level = 1
+	menu = await _fresh_menu()
+	_check("Continue: with a save it's enabled and selected", not menu.pages["main"].get_child(0).disabled and root.gui_get_focus_owner().text == "Continue Game")
+	var new_game = menu.pages["main"].get_child(1)
+	new_game.grab_focus()
+	await _frames(2)
+	new_game.emit_signal("pressed")
+	await create_timer(1.2).timeout
+	_check("New Game: with a save, the first press only asks (nothing erased)", current_scene == menu and save.completed == [1])
+	new_game.emit_signal("pressed")
+	await create_timer(1.5).timeout
+	_check("New Game: the second press starts over from the intro", current_scene.scene_file_path == "res://intro_cutscene.tscn" and save.completed == [] and save.current_level == 1)
+	_use_test_save()
+
+
 func _test_menu() -> void:
 	_release_all()
 	change_scene_to_file("res://main_menu.tscn")
 	await create_timer(0.4).timeout
 	var menu = current_scene
 	var focus = func(): return root.gui_get_focus_owner()
-	_check("Menu: opens with Start Game selected", menu.name == "MainMenu" and focus.call() and focus.call().text == "Start Game")
+	_check("Menu: with no save, Continue is greyed out and New Game is selected",
+		menu.name == "MainMenu" and focus.call() and focus.call().text == "New Game" and menu.pages["main"].get_child(0).disabled)
 	await _tap(KEY_DOWN)
 	await _tap(KEY_S)
 	var after_down = focus.call().text
 	await _tap(KEY_W)
-	_check("Menu: arrow keys and W/S move the selection", after_down == "Controls" and focus.call().text == "Options")
+	_check("Menu: arrow keys and W/S move the selection", after_down == "Level Select" and focus.call().text == "Tutorial")
+	await _tap(KEY_DOWN)
+	await _tap(KEY_DOWN)
 	await _tap(KEY_ENTER)
 	await _frames(3)
 	_check("Menu: Options opens with the music slider selected", menu.pages["options"].visible and focus.call() is HSlider)
@@ -770,10 +967,11 @@ func _test_menu() -> void:
 	_check("Menu: the music slider changes the music volume", changed)
 	await _tap(KEY_ESCAPE)
 	await _frames(3)
-	_check("Menu: Esc goes back to the main page", menu.pages["main"].visible and focus.call().text == "Start Game")
+	_check("Menu: Esc goes back to the main page", menu.pages["main"].visible and focus.call().text == "New Game")
 	await _tap(KEY_ENTER)
 	await create_timer(1.5).timeout
-	_check("Menu: Start Game fades into the intro cutscene", current_scene != null and current_scene.scene_file_path == "res://intro_cutscene.tscn")
+	_check("Menu: New Game fades into the intro cutscene", current_scene != null and current_scene.scene_file_path == "res://intro_cutscene.tscn")
+	_check("Menu: New Game starts a story save at Level 1", root.get_node("SaveGame").current_level == 1)
 	var sfx = root.get_node("Sfx")
 	_check("Intro: its own music plays", sfx.music_target == current_scene.CALM_MUSIC)
 	await _tap(KEY_SPACE)
@@ -807,9 +1005,8 @@ func _fresh_menu() -> Control:
 func _test_quit_egg() -> void:
 	# Keyboard: Quit can be picked straight away, no chasing
 	var menu = await _fresh_menu()
-	for i in 3:
-		await _tap(KEY_DOWN)
-	_check("Quit egg: keyboard Down x3 selects Quit Game", root.gui_get_focus_owner() == menu.quit_button)
+	await _tap(KEY_UP)
+	_check("Quit egg: keyboard Up from the top wraps to Quit Game", root.gui_get_focus_owner() == menu.quit_button)
 	await _tap(KEY_ENTER)
 	_check("Quit egg: Enter on Quit opens the confirmation (no chasing needed)", is_instance_valid(menu.quit_dialog))
 	await _tap(KEY_ESCAPE)
@@ -872,8 +1069,7 @@ func _test_quit_egg() -> void:
 
 	# Controller: D-pad to Quit, A opens, B closes
 	await _tap(KEY_UP)  # move off Quit
-	for i in 3:
-		await _joy(JOY_BUTTON_DPAD_UP)
+	await _joy(JOY_BUTTON_DPAD_DOWN)
 	var on_quit = root.gui_get_focus_owner() == quit_button
 	await _joy(JOY_BUTTON_A)
 	var opened = is_instance_valid(menu.quit_dialog)
@@ -900,8 +1096,7 @@ func _test_quit_egg() -> void:
 
 func _test_leave_quits() -> void:
 	var menu = await _fresh_menu()
-	for i in 3:
-		await _tap(KEY_DOWN)
+	await _tap(KEY_UP)   # from the top, Up wraps round to Quit Game
 	await _tap(KEY_ENTER)
 	await create_timer(5.3).timeout
 	await _tap(KEY_RIGHT)  # Stay -> Leave The Between
@@ -979,20 +1174,32 @@ func warden_now() -> Node2D:
 # A new copy of the level with the player at start. The enemies placed around the level
 # are removed (unless keep_enemies) so movement checks only test the level's shape;
 # the enemies have their own checks.
-func _fresh(start: Vector2, keep_enemies := false) -> void:
+func _fresh(start: Vector2, keep_enemies := false, scene := "res://level_1.tscn") -> void:
 	_release_all()
 	var old = current_scene
-	change_scene_to_file("res://level_1.tscn")
+	change_scene_to_file(scene)
 	while current_scene == null or current_scene == old:
 		await process_frame
 	level = current_scene
 	if not keep_enemies:
-		for node in level.get_node("Expansion").get_children():
+		for node in level.get_node("Expansion" if level.has_node("Expansion") else "Map").get_children():
 			if node.is_in_group("enemies"):
 				node.free()
 	level.player.global_position = start
 	level.spawn_position = start
 	await _frames(15)
+
+
+# Point SaveGame at a test file and start it empty (your real save.cfg is left alone)
+func _use_test_save() -> void:
+	var save = root.get_node("SaveGame")
+	save.path = "user://save_selftest.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(save.path))
+	save.unlocked_level = 1
+	save.completed = []
+	save.fragments = 0
+	save.powers = []
+	save.current_level = 0
 
 
 func _frames(n: int) -> void:

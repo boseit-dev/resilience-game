@@ -19,8 +19,6 @@ enum State { PATROL, WARN, RECOVER, STUN }
 var state = State.PATROL
 var timer = 0.0
 var cracks: Node2D
-var frames: Array[Texture2D] = []
-var walk_time = 0.0
 
 
 func _init() -> void:
@@ -63,7 +61,8 @@ func think(delta: float) -> void:
 			if timer <= 0.0:
 				state = State.PATROL
 				sprite.modulate = _armour_color()
-	_animate_walk(delta)
+	animate_walk(delta, 0.25)
+	cracks.scale.x = -1.0 if direction > 0 else 1.0  # cracks flip with the sprite
 
 
 func _slam() -> void:
@@ -137,13 +136,6 @@ func _draw_cracks() -> void:
 		cracks.add_child(crack)
 
 
-func _animate_walk(delta: float) -> void:
-	if velocity.x != 0.0:
-		walk_time += delta
-		sprite.texture = frames[int(walk_time / 0.25) % 2]
-	else:
-		sprite.texture = frames[0]
-	cracks.scale.x = -1.0 if direction > 0 else 1.0  # cracks flip with the sprite
 
 
 func on_reset() -> void:

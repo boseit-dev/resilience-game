@@ -2,7 +2,8 @@ extends Area2D
 
 # RESILIENCE - EXIT PORTAL
 # Hidden until open() is called (the Warden's "defeated" signal calls it).
-# Walk in to go to next_scene. If that scene doesn't exist yet, a message shows instead.
+# Walk in to go to next_scene. If that scene doesn't exist yet, a message shows instead,
+# then you go back to the main menu (your progress is already saved).
 
 @export_file("*.tscn") var next_scene: String = "res://level_2.tscn"
 
@@ -37,3 +38,9 @@ func _on_body_entered(body: Node2D) -> void:
 		get_tree().call_deferred("change_scene_to_file", next_scene)
 	else:
 		$Message.show()
+		get_tree().create_timer(4.0).timeout.connect(_back_to_menu)
+
+
+func _back_to_menu() -> void:
+	if is_inside_tree():
+		get_tree().change_scene_to_file("res://main_menu.tscn")

@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 
 Sfx="*res://sfx.gd"
 Settings="*res://settings.gd"
+SaveGame="*res://save_game.gd"
 
 [display]
 
@@ -29,6 +30,7 @@ window/stretch/aspect="expand"
 [physics]
 
 3d/physics_engine="Jolt Physics"
+common/physics_interpolation=true
 
 [rendering]
 

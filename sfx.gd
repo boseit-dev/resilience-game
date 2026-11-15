@@ -127,14 +127,8 @@ const AMBIENCE_VOLUME = -26.0
 const MUSIC = preload("res://assets/music/level_1_theme.ogg")
 const MUSIC_VOLUME = -15.0
 
-# Boss music: the first file in this list that exists is used.
-# To use Night Shade by AdhesiveWombat, save your copy as assets/music/night_shade.mp3 (or .ogg).
-# The number is the second the track starts at (and loops back to): set it to the intense part.
-const BOSS_MUSIC = [
-	["res://assets/music/night_shade.mp3", 0.0],
-	["res://assets/music/night_shade.ogg", 0.0],
-	["res://assets/music/boss_theme.ogg", 0.0],  # CC0 stand-in: "Level 3" by Juhani Junkala
-]
+# Boss music: "Level 3" by Juhani Junkala (CC0). To use another track, change this path.
+const BOSS_MUSIC = preload("res://assets/music/boss_theme.ogg")
 
 var players: Array[AudioStreamPlayer] = []
 var ambience: AudioStreamPlayer
@@ -182,18 +176,15 @@ func play(sound_name: String, pitch: float = 1.0) -> void:
 func start_ambience() -> void:
 	if not ambience.playing:
 		ambience.play()
-
 	play_level_music()
 
 
 func play_level_music() -> void:
-	_switch_music(MUSIC, 0.0)
+	play_music(MUSIC)
 
 
-# Called by the Warden when you drop into its arena
-# Any other track, faded in (the intro cutscene uses this)
-func play_music(stream: AudioStream) -> void:
-	_switch_music(stream, 0.0)
+func play_boss_music() -> void:
+	play_music(BOSS_MUSIC)
 
 
 func fade_out_music(time: float) -> void:
@@ -204,21 +195,13 @@ func fade_out_music(time: float) -> void:
 	music_fade.tween_property(music, "volume_db", -40.0, time)
 
 
-func play_boss_music() -> void:
-	for entry in BOSS_MUSIC:
-		if ResourceLoader.exists(entry[0]):
-			_switch_music(load(entry[0]), entry[1])
-			return
-
-
 # Fade out whatever is playing, then fade the new track in
-func _switch_music(stream: AudioStream, start: float) -> void:
+func play_music(stream: AudioStream) -> void:
 	if music_target == stream:
 		return
 	music_target = stream
-	if "loop_offset" in stream:   # Ogg/MP3 loop here; WAV files loop through their import settings
+	if "loop" in stream:   # Ogg files loop here; WAV files loop through their import settings
 		stream.loop = true
-		stream.loop_offset = start
 
 	if music_fade:
 		music_fade.kill()  # a new switch replaces one still fading
@@ -228,5 +211,5 @@ func _switch_music(stream: AudioStream, start: float) -> void:
 	music_fade.tween_callback(func():
 		music.stream = stream
 		music.volume_db = -40.0
-		music.play(start))
+		music.play())
 	music_fade.tween_property(music, "volume_db", MUSIC_VOLUME, 1.5)

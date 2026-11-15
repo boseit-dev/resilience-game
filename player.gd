@@ -62,28 +62,14 @@ func _ready() -> void:
 	add_child(shield_ring)
 
 
+func _key(a: Key, b: Key, c: Key = KEY_NONE) -> bool:
+	return Input.is_physical_key_pressed(a) or Input.is_physical_key_pressed(b) or (c != KEY_NONE and Input.is_physical_key_pressed(c))
+
+
 func _physics_process(delta: float) -> void:
-
-	# Read movement keys
-	var left_pressed = (
-		Input.is_physical_key_pressed(KEY_A)
-		or Input.is_physical_key_pressed(KEY_LEFT)
-	)
-
-	var right_pressed = (
-		Input.is_physical_key_pressed(KEY_D)
-		or Input.is_physical_key_pressed(KEY_RIGHT)
-	)
-
-	var jump_pressed = (
-		Input.is_physical_key_pressed(KEY_W)
-		or Input.is_physical_key_pressed(KEY_UP)
-		or Input.is_physical_key_pressed(KEY_SPACE)
-	)
-
+	var jump_pressed = _key(KEY_W, KEY_UP, KEY_SPACE)
 	var dash_pressed = Input.is_key_pressed(KEY_SHIFT)
-
-	var direction = int(right_pressed) - int(left_pressed)
+	var direction = int(_key(KEY_D, KEY_RIGHT)) - int(_key(KEY_A, KEY_LEFT))
 
 	if direction != 0:
 		facing_direction = direction
@@ -119,12 +105,7 @@ func _physics_process(delta: float) -> void:
 		$Sprite2D.texture = WALK_FRAMES[0] if is_on_floor() else WALK_FRAMES[1]
 
 	# Start dash
-	if (
-		dash_unlocked
-		and dash_pressed
-		and not dash_was_pressed
-		and dash_cooldown <= 0.0
-	):
+	if dash_unlocked and dash_pressed and not dash_was_pressed and dash_cooldown <= 0.0:
 		dash_timer = DASH_DURATION
 		dash_cooldown = BOOSTED_DASH_COOLDOWN if dash_boost_timer > 0.0 else DASH_COOLDOWN
 		Sfx.play("dash")
@@ -170,11 +151,7 @@ func _physics_process(delta: float) -> void:
 	if direction != 0:
 		velocity.x = direction * SPEED * (BOOSTED_SPEED if speed_boost_timer > 0.0 else 1.0)
 	else:
-		velocity.x = move_toward(
-			velocity.x,
-			0.0,
-			SPEED
-		)
+		velocity.x = move_toward(velocity.x, 0.0, SPEED)
 
 	move_and_slide()
 
@@ -191,10 +168,5 @@ func reset_after_respawn() -> void:
 	speed_boost_timer = 0.0   # boosts end when you die (the shield stays until it's used)
 	dash_boost_timer = 0.0
 
-	jump_was_pressed = (
-		Input.is_physical_key_pressed(KEY_W)
-		or Input.is_physical_key_pressed(KEY_UP)
-		or Input.is_physical_key_pressed(KEY_SPACE)
-	)
-
+	jump_was_pressed = _key(KEY_W, KEY_UP, KEY_SPACE)   # a key still held from before doesn't count as a new press
 	dash_was_pressed = Input.is_key_pressed(KEY_SHIFT)

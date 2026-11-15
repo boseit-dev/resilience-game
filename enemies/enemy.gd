@@ -14,11 +14,13 @@ class_name Enemy
 @export var patrol_distance = 80.0     # how far it walks either side of its start
 @export var walk_speed = 45.0
 @export var look = 15                  # Kenney character tile (tile_0015.png ...)
+@export var harmless = false           # a training dummy (tutorial): stands still and never hurts you
 
 const GRAVITY = 900.0
 const STOMP_BOUNCE = -330.0
 const TOUCH_COOLDOWN = 1.0             # after hurting you, it can't hurt you again for this long
 const STOMP_HEIGHT = 18.0              # your middle must be this far above its feet to count as a stomp
+const SIZE = 1.5                       # enemies are drawn (and hit) 1.5x bigger than the player
 const CHARACTERS = "res://assets/kenney_pixel-platformer/Tiles/Characters/tile_%04d.png"
 
 var start_position: Vector2
@@ -27,6 +29,8 @@ var hurt_cooldown = 0.0
 var stomp_cooldown = 0.0               # one bounce can't count as two stomps
 var defeated = false
 var hitbox_size = Vector2(16, 20)
+var frames: Array[Texture2D] = []   # walking animation frames (each enemy type fills these in build())
+var walk_time = 0.0
 var sprite: Sprite2D
 var hitbox: Area2D
 var player: CharacterBody2D
@@ -40,6 +44,7 @@ func _ready() -> void:
 	while level and not level.has_node("Player"):   # the level is the ancestor that has the Player
 		level = level.get_parent()
 	player = level.get_node_or_null("Player") if level else null
+	scale = Vector2(SIZE, SIZE)   # everything below (body, sprite, hitbox, weapon) grows with it
 	collision_layer = 0   # the player passes through enemies
 	collision_mask = 1    # but enemies stand on floors
 
@@ -64,6 +69,8 @@ func _ready() -> void:
 	hitbox.add_child(shape)
 	add_child(hitbox)
 	build()
+	if harmless:
+		modulate = Color(0.75, 0.85, 0.7)   # looks like a straw dummy, not a real fighter
 
 
 func _physics_process(delta: float) -> void:
@@ -74,7 +81,8 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y += GRAVITY * delta
 	velocity.x = 0.0
-	think(delta)
+	if not harmless:
+		think(delta)
 	move_and_slide()
 	sprite.flip_h = direction > 0  # Kenney characters are drawn facing left
 	_check_player_touch()
@@ -100,7 +108,7 @@ func on_reset() -> void:     # go back to the starting state
 func _check_player_touch() -> void:
 	if player == null or not hitbox.overlaps_body(player):
 		return
-	var from_above = player.velocity.y > 0.0 and player.global_position.y < global_position.y - STOMP_HEIGHT
+	var from_above = player.velocity.y > 0.0 and player.global_position.y < global_position.y - STOMP_HEIGHT * SIZE
 	if from_above and stomp_cooldown <= 0.0:
 		stomp_cooldown = 0.3
 		player.velocity.y = STOMP_BOUNCE
@@ -111,7 +119,7 @@ func _check_player_touch() -> void:
 
 # Called by attacks too (sword swing, slam). Respects the cooldown, so one hit = one life.
 func hurt_player() -> void:
-	if hurt_cooldown > 0.0 or defeated:
+	if hurt_cooldown > 0.0 or defeated or harmless:
 		return
 	hurt_cooldown = TOUCH_COOLDOWN
 	level.enemy_hit_player()
@@ -158,6 +166,7 @@ func reset_after_player_death() -> void:
 	if defeated:
 		return
 	global_position = start_position
+	reset_physics_interpolation()
 	velocity = Vector2.ZERO
 	direction = -1
 	hurt_cooldown = TOUCH_COOLDOWN   # not 0: its hitbox can still "remember" touching you for a frame
@@ -186,8 +195,16 @@ func walk_towards(x: float, speed: float, limit: float) -> void:
 		velocity.x = direction * speed
 
 
+# Swap between the walking frames while moving
+func animate_walk(delta: float, frame_time: float) -> void:
+	if frames.is_empty():
+		return
+	walk_time = walk_time + delta if velocity.x != 0.0 else 0.0
+	sprite.texture = frames[int(walk_time / frame_time) % frames.size()]
+
+
 func ground_ahead() -> bool:
-	var from = global_position + Vector2(direction * 10, -4)
+	var from = global_position + Vector2(direction * 10, -4) * SIZE
 	var query = PhysicsRayQueryParameters2D.create(from, from + Vector2(0, 16), 1, [get_rid()])
 	return not get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
@@ -199,7 +216,7 @@ func sees_player(max_distance: float, max_height: float = 60.0) -> bool:
 	var offset = player.global_position - global_position
 	if abs(offset.x) > max_distance or abs(offset.y + 12) > max_height:
 		return false
-	var eye = global_position + Vector2(0, -14)
+	var eye = global_position + Vector2(0, -14) * SIZE
 	var query = PhysicsRayQueryParameters2D.create(eye, player.global_position, 1, [get_rid()])
 	var hit = get_world_2d().direct_space_state.intersect_ray(query)
 	return hit.is_empty() or hit.collider == player

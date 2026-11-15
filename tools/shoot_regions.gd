@@ -1,7 +1,7 @@
 extends SceneTree
 
-# Screenshots of Level 1 areas (for checking the art after changes).
-# Run:  open -g -n -W -a Godot.app --args --path . --position 4000,4000 --resolution 1280x720 --script tools/shoot_regions.gd -- <output folder>
+# Screenshots of Level 1 (or the tutorial) areas, for checking the art after changes.
+# Run:  open -g -n -W -a Godot.app --args --path . --position 4000,4000 --resolution 1280x720 --script tools/shoot_regions.gd -- <output folder> [tutorial]
 
 const SPOTS = {
 	"01_arrival": Vector2(-3400, 360), "02_fork": Vector2(-2900, 360), "03_upper_ruins": Vector2(-2200, 190),
@@ -12,16 +12,26 @@ const SPOTS = {
 	"16_arena": Vector2(7400, 360),
 }
 
+const TUTORIAL_SPOTS = {
+	"t0_start": Vector2(-20, 360), "t1_moving": Vector2(300, 360), "t2_jumping": Vector2(1000, 360), "t3_pads": Vector2(1850, 360),
+	"t4_double_jump": Vector2(3050, 220), "t5_dash": Vector2(4100, 360), "t6_combat": Vector2(4850, 360),
+	"t7_checkpoints": Vector2(5800, 360), "t8_final": Vector2(6500, 360), "t8_wall": Vector2(7000, 170),
+	"t8_end": Vector2(7450, 360), "t9_finish": Vector2(7650, 360),
+}
+
 func _initialize() -> void:
-	var out = OS.get_cmdline_user_args()[0]
-	var level = load("res://level_1.tscn").instantiate()
+	var args = OS.get_cmdline_user_args()
+	var out = args[0]
+	var tutorial = args.size() > 1 and args[1] == "tutorial"
+	var spots = TUTORIAL_SPOTS if tutorial else SPOTS
+	var level = load("res://tutorial.tscn" if tutorial else "res://level_1.tscn").instantiate()
 	root.add_child(level)
 	await process_frame
 	var player = level.get_node("Player")
-	for shot in SPOTS:
+	for shot in spots:
 		while level.respawning:   # a death respawn would move the player away mid-shot
 			await process_frame
-		player.global_position = SPOTS[shot]
+		player.global_position = spots[shot]
 		player.velocity = Vector2.ZERO
 		player.get_node("Camera2D").reset_smoothing()
 		for i in 40:
