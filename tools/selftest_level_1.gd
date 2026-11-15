@@ -1213,6 +1213,9 @@ func _walk_until(stop_x: float, max_frames: int) -> void:
 	_key(KEY_RIGHT, true)
 	for i in max_frames:
 		await physics_frame
+		if not is_instance_valid(level):   # walked into a portal: the scene changed
+			_key(KEY_RIGHT, false)
+			return
 		if level.player.global_position.x >= stop_x:
 			_key(KEY_RIGHT, false)
 	_key(KEY_RIGHT, false)

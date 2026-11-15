@@ -66,6 +66,7 @@ func close() -> void:
 
 func _physics_process(delta: float) -> void:
 	if not active:
+		is_on = false   # switched off: invisible AND harmless
 		beam.clear_points()
 		glow.energy = 0.0
 		return
@@ -95,5 +96,5 @@ func _draw_beam(on: bool, warning: bool) -> void:
 
 
 func _on_body_entered(body: Node2D) -> void:
-	if is_on and level and body == level.player:
+	if active and is_on and level and body == level.player:
 		level._on_spikes_body_entered(body)

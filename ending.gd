@@ -115,6 +115,7 @@ func _build_gateway() -> void:
 	energy.gravity = Vector2(0, -40)
 	energy.initial_velocity_min = 20.0
 	energy.initial_velocity_max = 50.0
+	energy.color_ramp = _fade_ramp()   # the energy fades away as it rises
 	energy.emitting = false
 	var falling = _particles(gateway, Vector2(0, -150), 40, 2.5, Color("#9C8CB8"))   # the world collapsing
 	falling.material = null
@@ -181,6 +182,9 @@ func _process(delta: float) -> void:
 			var going = scientist.position.x > -86.0
 			scientist.position.x = move_toward(scientist.position.x, -86.0, 30.0 * delta)
 			scientist.texture = WALK[int(t / 0.15) % 2] if going else WALK[0]
+	# Standing still, they breathe (1 pixel up and down)
+	_idle_bob(walker, mode == "look" or mode == "waking")
+	_idle_bob(scientist, mode in ["fallen", "dark"] and scientist.rotation == 0.0)
 	if in_credits:
 		credits.position.y -= 60.0 * delta   # about 35 seconds to roll past
 
@@ -207,8 +211,10 @@ func _run_beat(beat: String) -> void:
 		"gateway":
 			Sfx.play_music(ENDING_MUSIC)
 			_fade_from_black(1.5)
+			_camera_to(Vector2(-40, 6), 3.3, 0.0)
 		"walk":
 			mode = "walk"
+			_camera_to(Vector2(20, 0), 3.1, 6.0)   # follow the walk towards the gateway
 		"look_back":
 			mode = "look"
 			walker.texture = WALK[0]
@@ -218,10 +224,13 @@ func _run_beat(beat: String) -> void:
 			mode = "waking"
 			walker.flip_h = true
 			energy.emitting = true
+			shake = 3.5   # a jolt as the gateway wakes
+			_camera_to(Vector2(50, -4), 3.4, 4.5)
 			Sfx.play("energy")
 			_caption("The gateway was waking up.")
 		"run":
 			mode = "run"
+			_camera_to(Vector2(70, -8), 3.8, 2.4)   # rush in with the runner
 			_caption("")
 			Sfx.play("whoosh")
 		"flash":
@@ -232,6 +241,8 @@ func _run_beat(beat: String) -> void:
 			tunnel.visible = true
 			shake = 0.0
 			darkness.color = Color(0.85, 0.85, 1.0)
+			_camera_to(Vector2.ZERO, 3.0, 0.0)
+			_camera_to(Vector2.ZERO, 3.6, 8.0)
 		"colours":
 			Sfx.play("whoosh")
 			create_tween().tween_property(darkness, "color", Color(1.0, 0.8, 0.7), 3.0)
@@ -250,12 +261,15 @@ func _run_beat(beat: String) -> void:
 			scientist.position = Vector2(RING_CENTER.x - 34, FLOOR_Y - 6)
 			scientist.rotation = PI / 2.0   # lying on the floor
 			mode = "fallen"
+			_set_lamps(true)
+			_camera_to(Vector2(30, 8), 3.5, 0.0)   # close on the scientist on the floor
 		"stand":
 			var up = create_tween()
 			up.tween_property(scientist, "rotation", 0.0, 1.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			up.parallel().tween_property(scientist, "position:y", FLOOR_Y - 12.0, 1.2)
 		"look_around":
 			_caption("The lab. My lab.")
+			_camera_to(Vector2.ZERO, 3.0, 3.0)   # pull back to show the whole lab
 			var look = create_tween()
 			look.tween_callback(func(): scientist.flip_h = true)
 			look.tween_interval(0.9)
@@ -270,6 +284,8 @@ func _run_beat(beat: String) -> void:
 			off.parallel().tween_property(core, "scale", Vector2.ZERO, 3.0)
 			off.parallel().tween_property(ring_light, "energy", 0.0, 3.0)
 			screens_color = Color("#2A3A4A")
+			_flicker_lamps(2, true)   # the power dips as the gate shuts down
+			_camera_to(Vector2(-20, 4), 3.2, 10.0)
 		"quote":
 			_caption(QUOTE)
 		"silence":
@@ -278,12 +294,17 @@ func _run_beat(beat: String) -> void:
 		"switch_off":
 			mode = "to_lever"
 			scientist.flip_h = false
+			_camera_to(Vector2(-50, 6), 3.3, 3.0)
 			get_tree().create_timer(2.0).timeout.connect(func():
 				lever.texture = LEVER_OFF
 				Sfx.play("switch"))
 		"lights_out":
 			mode = "dark"
-			create_tween().tween_property(darkness, "color", Color.BLACK, 3.5)
+			_flicker_lamps(4, false)   # the lamps stutter, then go out
+			var dim = create_tween()
+			dim.tween_property(darkness, "color", Color.BLACK, 3.5)
+			dim.parallel().tween_property(screen_light, "energy", 0.0, 2.0)
+			_camera_to(Vector2(-60, 8), 3.5, 4.0)
 		"credits":
 			mode = "credits"
 			credits_layer.visible = true
@@ -301,3 +322,14 @@ func _run_beat(beat: String) -> void:
 			in_credits = true
 		"end":
 			_finish()
+
+
+# The ceiling lamps blink off and on a few times, then stay on (or go out)
+func _flicker_lamps(times: int, stay_on: bool) -> void:
+	var blink = create_tween()
+	for i in times:
+		blink.tween_callback(_set_lamps.bind(false))
+		blink.tween_interval(randf_range(0.05, 0.15))
+		blink.tween_callback(_set_lamps.bind(true))
+		blink.tween_interval(randf_range(0.1, 0.35))
+	blink.tween_callback(_set_lamps.bind(stay_on))

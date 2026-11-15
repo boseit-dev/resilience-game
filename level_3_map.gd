@@ -159,7 +159,7 @@ const SPIKES = [
 # MOVING PLATFORMS: [x, top, width, travel x, travel y, seconds, (moving at the start?)]
 const MOVERS = [
 	[2960, 372, 56, 120, 0, 2.0],            # across the upper route's gap
-	[5450, 370, 72, 0, -224, 2.5, false],    # mover 1: the machine hall lift (needs power; tops out just above the shelf)
+	[5450, 370, 72, 0, -232, 2.5, false],    # mover 1: the machine hall lift (needs power; tops out above the shelf so you step down)
 	[10990, 360, 64, 120, 0, 1.4],           # trial 3
 	[13900, 290, 64, 0, -80, 2.0, false, "boss_mover"],    # the Null Architect starts these in phase 2
 	[14600, 250, 64, -140, 0, 2.4, false, "boss_mover"],
@@ -359,7 +359,7 @@ func _start_escape() -> void:
 	escaping = true
 	made.door[10].open()
 	level.get_node("ExitPortal").open()
-	collapse.position.x = ESCAPE_START.x - 900.0
+	collapse.position.x = minf(level.player.global_position.x, ESCAPE_START.x) - 900.0   # always starts behind you
 	collapse.show()
 	Sfx.play_music(ESCAPE_MUSIC)
 	Sfx.music.pitch_scale = 1.15

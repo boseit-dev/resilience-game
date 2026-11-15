@@ -38,6 +38,11 @@ func can_play(number: int) -> bool:
 	return number >= 1 and number <= unlocked_level and ResourceLoader.exists(level_scene(number))
 
 
+# Where Continue goes: the opening cutscene if no level is beaten yet (so it is never skipped), else the level
+func continue_scene() -> String:
+	return STORY_START if completed.is_empty() and current_level == 1 else level_scene(current_level)
+
+
 func has_progress() -> bool:
 	return current_level >= 1 and can_play(current_level)
 
@@ -61,7 +66,7 @@ func complete_level(number: int, kept_powers: Array) -> void:
 		if not powers.has(p):
 			powers.append(p)
 	unlocked_level = clampi(max(unlocked_level, number + 1), 1, LEVEL_COUNT)
-	current_level = number + 1 if number < LEVEL_COUNT else number
+	current_level = max(current_level, mini(number + 1, LEVEL_COUNT))   # replaying an old level never moves Continue back
 	save()
 
 

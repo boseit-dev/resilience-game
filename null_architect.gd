@@ -88,6 +88,7 @@ func _physics_process(delta: float) -> void:
 	for i in rings.size():
 		rings[i].rotation = sin(Time.get_ticks_msec() / (700.0 + i * 300.0)) * 0.3
 	if finale:   # it floats at the top of the arena, waiting for the final stomp
+		safe_timer = maxf(safe_timer - delta, 0.0)   # (the normal countdown is skipped while floating)
 		core.scale = Vector2.ONE * (1.3 + 0.3 * sin(Time.get_ticks_msec() / 90.0))
 		var player = get_node_or_null("../Player")
 		if player and $Hitbox.overlaps_body(player):   # checked every frame: you may jump up through it first

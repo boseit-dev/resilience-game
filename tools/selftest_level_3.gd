@@ -227,8 +227,8 @@ func _test_l3_power() -> void:
 	_check("Power: then LIFT + BARRIER again", lift.running and beams.all(func(z): return not z.active))
 	var risen = await _ride(lift, 5600)
 	_check("Power: the lift carries you up to the high shelf", risen > 200 and _landed_on(5520, 5700, 152))
-	await _walk_until(6260, 400)
-	_check("Power: past the barrier and through the door (guardian removed)", level.player.global_position.x > 6230 and level.deaths == 0)
+	await _walk_until(6232, 400)
+	_check("Power: past the barrier and through the door (guardian removed)", level.player.global_position.x > 6215 and level.deaths == 0)
 
 
 func _test_l3_depths() -> void:
@@ -414,8 +414,8 @@ func _test_l3_boss() -> void:
 	await _place(Vector2(13870, 368))
 	await _pad_climb(14040, 13960)
 	_check("Final attack: Bounce Pad + Double Jump up to the first ledge", _landed_on(13990, 14090, 191))
-	await _place(Vector2(14060, 178))
-	await _leap(14090, 14300, true, "")
+	await _place(Vector2(14020, 178))
+	await _leap(14058, 14300, true, "")   # jump early: a single jump can't clear the beam, a double jump can
 	_check("Final attack: Double Jump over the energy beam", _landed_on(14260, 14340, 191) and level.deaths == 1)
 	await _leap(14333, 14490, false, "edge")
 	_check("Final attack: Dash under the rock", _landed_on(14450, 14550, 191))
@@ -432,9 +432,14 @@ func _test_l3_boss() -> void:
 		await physics_frame
 		if boss.health <= 0:
 			break
+	var beaten = boss.health <= 0   # (it removes itself soon after)
 	await _frames(30)
 	var save = root.get_node("SaveGame")
-	_check("Final stomp on the core defeats the Null Architect: Level 3 saved", boss.health <= 0 and save.completed.has(3))
+	_check("Final stomp on the core defeats the Null Architect: Level 3 saved", beaten and save.completed.has(3))
+	for i in 300:   # the slow-motion finish takes a moment
+		if level.get_node("Map").escaping:
+			break
+		await physics_frame
 	await create_timer(1.0).timeout
 	_check("The escape starts: door open, gateway open, the collapse is coming, urgent music",
 		_door(10).is_open and level.get_node("ExitPortal").is_open and level.get_node("Map").escaping
@@ -495,6 +500,16 @@ func _test_ending() -> void:
 	var save = root.get_node("SaveGame")
 	_check("Credits: SPACE goes to the main menu and the save is still finished",
 		current_scene.scene_file_path == "res://main_menu.tscn" and save.finished and save.current_level == 3)
+	var cs = root.get_node("SaveGame")
+	var keep = [cs.completed.duplicate(), cs.current_level]
+	cs.completed = []
+	cs.current_level = 1
+	_check("Continue before beating Level 1 plays the opening cutscene first (tutorial + menu)", cs.continue_scene() == cs.STORY_START)
+	cs.completed = [1]
+	cs.current_level = 2
+	_check("Continue after Level 1 goes straight to the level", cs.continue_scene() == "res://level_2.tscn")
+	cs.completed = keep[0]
+	cs.current_level = keep[1]
 	_check("Continue Game is enabled for a finished story (replay Level 3)", not current_scene.pages["main"].get_child(0).disabled)
 	save.start_new_game()
 	_check("New Game starts a fresh story (finished cleared)", not save.finished and save.completed.is_empty() and save.current_level == 1)

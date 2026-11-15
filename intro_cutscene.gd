@@ -74,6 +74,10 @@ var faller_light: PointLight2D
 var dust: CPUParticles2D
 var fade: ColorRect
 var caption: Label
+var caption_tween: Tween          # the caption's current fade, so a new caption can stop it
+var camera_tween: Tween           # the camera's current glide, so a new move can stop it
+var lamps: Array[Node2D] = []     # ceiling lamps (cone + light), so they can flicker
+var tunnel_light: PointLight2D
 var title: Label
 var subtitle: Label
 
@@ -128,12 +132,15 @@ func _build_lab() -> void:
 		cord.points = PackedVector2Array([Vector2(x, -140), Vector2(x, -104)])
 		lab.add_child(cord)
 		_rect(lab, Vector2(x - 6, -104), Vector2(12, 4), Color("#5B6478"))
+		var lamp = Node2D.new()   # the cone and the light in one node, so they flicker together
+		lab.add_child(lamp)
+		lamps.append(lamp)
 		var cone = Polygon2D.new()
 		cone.polygon = PackedVector2Array([Vector2(x - 5, -100), Vector2(x + 5, -100), Vector2(x + 34, FLOOR_Y), Vector2(x - 34, FLOOR_Y)])
 		cone.color = Color(1, 0.92, 0.75, 0.05)
 		cone.material = _additive()
-		lab.add_child(cone)
-		_light(lab, Vector2(x, -96), Color(1, 0.9, 0.7), 0.7, 1.4)
+		lamp.add_child(cone)
+		_light(lamp, Vector2(x, -96), Color(1, 0.9, 0.7), 0.7, 1.4)
 
 	# The console: a desk, two monitors with scrolling data, and the big lever
 	_rect(lab, Vector2(-150, 24), Vector2(64, 26), Color("#232A40"))
@@ -281,10 +288,28 @@ func _build_tunnel() -> void:
 		stars.radial_accel_max = 600.0
 		stars.scale_amount_min = 0.6
 		stars.scale_amount_max = 1.4
+		stars.color_ramp = _fade_ramp()   # stars appear out of the middle and fade at the edges
+		stars.hue_variation_min = -0.05
+		stars.hue_variation_max = 0.05
+	# Soft blue-to-purple energy blobs rushing past between the stars
+	var wisps = _particles(tunnel, Vector2.ZERO, 50, 1.1, GLOW)
+	wisps.texture = _soft_dot()
+	wisps.preprocess = 1.0
+	wisps.spread = 180.0
+	wisps.gravity = Vector2.ZERO
+	wisps.initial_velocity_min = 20.0
+	wisps.initial_velocity_max = 70.0
+	wisps.radial_accel_min = 150.0
+	wisps.radial_accel_max = 300.0
+	wisps.scale_amount_min = 0.03   # the soft dot is 128 px, so this is 4 to 10 px
+	wisps.scale_amount_max = 0.08
+	wisps.hue_variation_min = -0.12
+	wisps.hue_variation_max = 0.12
+	wisps.color_ramp = _fade_ramp()
 	tumbler = Sprite2D.new()
 	tumbler.texture = WALK[0]
 	tunnel.add_child(tumbler)
-	_light(tunnel, Vector2.ZERO, RIFT, 1.5, 2.5)
+	tunnel_light = _light(tunnel, Vector2.ZERO, RIFT, 1.5, 2.5)
 
 
 # ---------- arriving in The Between (looks like the start of Level 1) ----------
@@ -417,6 +442,8 @@ func _process(delta: float) -> void:
 			ring_glow.default_color = GLOW if randf() > 0.3 else RIFT
 			core.modulate = Color.WHITE if randf() > 0.2 else RIFT
 			darkness.color = Color(0.34, 0.37, 0.5) if randf() > 0.08 else Color(0.18, 0.18, 0.26)
+			for lamp in lamps:
+				lamp.visible = randf() > 0.06   # the ceiling lamps stutter
 			shake = maxf(shake, 1.5)
 			alarm_timer -= delta
 			if alarm_timer <= 0.0:
@@ -448,6 +475,7 @@ func _process(delta: float) -> void:
 			beacon.get_node("Light").energy = 0.8 + absf(sin(t * 5.0))
 
 	if tunnel.visible:
+		tunnel_light.energy = 1.5 + sin(t * 7.0) * 0.5   # the tunnel's glow pulses
 		for i in tunnel_rings.size():
 			var grow = fposmod(t * 0.9 + i / float(tunnel_rings.size()), 1.0)
 			tunnel_rings[i].scale = Vector2.ONE * (0.1 + grow * grow * 9.0)
@@ -461,6 +489,9 @@ func _process(delta: float) -> void:
 		if faller.position.y >= FLOOR_Y - 12.0:
 			faller.rotation = 0.0
 		faller_light.position = faller.position
+
+	# Standing still, the scientist breathes (1 pixel up and down)
+	_idle_bob(scientist, mode in ["lever", "charge", "malfunction", "rift"])
 
 	shake = maxf(0.0, shake - delta * 4.0)
 	camera.offset = Vector2(randf_range(-shake, shake), randf_range(-shake, shake))
@@ -479,6 +510,7 @@ func _run_beat(beat: String) -> void:
 		"lab":
 			Sfx.play_music(CALM_MUSIC)
 			_fade_from_black(1.5)
+			_camera_to(Vector2(-40, 6), 3.3, 0.0)   # start close on the console side
 			Sfx.play("machine_hum")
 			_caption("Year 7 of the Galaxy Gate project.")
 		"walk_in":
@@ -491,6 +523,7 @@ func _run_beat(beat: String) -> void:
 			lever.texture = LEVER_ON
 			Sfx.play("switch")
 			screens_color = Color("#5CFF9A")
+			_camera_to(Vector2.ZERO, 3.0, 2.5)   # pull back to show the whole lab
 		"power_100", "power_140", "power_200":
 			mode = "charge"
 			Sfx.play("energy")
@@ -501,6 +534,7 @@ func _run_beat(beat: String) -> void:
 			sparks.emitting = true
 			for beacon in beacons:
 				beacon.visible = true
+			_camera_to(Vector2(30, -6), 3.25, 5.0)   # slowly lean in towards the gate
 			_caption("WARNING:  FIELD UNSTABLE", DANGER)
 		"rift_opens":
 			mode = "rift"
@@ -510,10 +544,13 @@ func _run_beat(beat: String) -> void:
 			sparks.emitting = false
 			debris.emitting = true
 			darkness.color = Color(0.4, 0.34, 0.55)
+			_set_lamps(true)
+			_camera_to(Vector2(45, -10), 3.5, 3.0)
 			_caption("No... no, no, no!")
 		"pulled_in":
 			mode = "pulled"
 			Sfx.play("whoosh")
+			_camera_to(RING_CENTER + Vector2(-10, 2), 3.9, 3.5)   # dive into the rift with the scientist
 			_caption("")
 		"fade_out":
 			_fade_to_black(0.5)
@@ -523,6 +560,8 @@ func _run_beat(beat: String) -> void:
 			shake = 0.0
 			darkness.color = Color(0.85, 0.85, 1.0)
 			_fade_from_black(0.4)
+			_camera_to(Vector2.ZERO, 3.0, 0.0)
+			_camera_to(Vector2.ZERO, 3.6, 6.0)   # a slow zoom makes it feel like flying forward
 		"whoosh":
 			Sfx.play("whoosh")
 		"arrival":
@@ -531,6 +570,8 @@ func _run_beat(beat: String) -> void:
 			arrival.visible = true
 			darkness.color = Color(0.62, 0.67, 0.86)   # the same night colour as Level 1
 			_flash(Color.WHITE, 0.9)
+			_camera_to(Vector2(0, -30), 3.4, 0.0)   # start on the rift in the sky...
+			_camera_to(Vector2(0, 6), 3.0, 2.0)     # ...and follow the fall down to the ground
 		"land":
 			Sfx.play("thud")
 			dust.emitting = true
@@ -553,12 +594,46 @@ func _finish() -> void:
 	tween.tween_callback(func(): get_tree().change_scene_to_file(next_scene))
 
 
-# Captions type themselves out letter by letter
+# Captions fade in and type themselves out letter by letter.
+# A new caption fades the old one out first; _caption("") just fades the old one away.
 func _caption(text: String, color := TEXT) -> void:
-	caption.text = text
-	caption.add_theme_color_override("font_color", color)
-	caption.visible_ratio = 0.0
-	create_tween().tween_property(caption, "visible_ratio", 1.0, 0.03 * text.length())
+	if caption_tween:
+		caption_tween.kill()
+	caption_tween = create_tween()
+	if caption.text != "":
+		caption_tween.tween_property(caption, "modulate:a", 0.0, 0.25)
+	caption_tween.tween_callback(func():
+		caption.text = text
+		caption.add_theme_color_override("font_color", color)
+		caption.visible_ratio = 0.0
+		caption.modulate.a = 0.0)
+	if text != "":
+		caption_tween.tween_property(caption, "modulate:a", 1.0, 0.3)
+		caption_tween.parallel().tween_property(caption, "visible_ratio", 1.0, 0.03 * text.length())
+
+
+# Glide the camera to a spot and zoom level, eased at both ends (time 0 = jump there).
+# Keep zoom at 3 or more and the spot near the middle, or the edge of the set shows.
+func _camera_to(pos: Vector2, zoom: float, time: float) -> void:
+	if camera_tween:
+		camera_tween.kill()
+	if time <= 0.0:
+		camera.position = pos
+		camera.zoom = Vector2(zoom, zoom)
+		return
+	camera_tween = create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	camera_tween.tween_property(camera, "position", pos, time)
+	camera_tween.tween_property(camera, "zoom", Vector2(zoom, zoom), time)
+
+
+func _set_lamps(on: bool) -> void:
+	for lamp in lamps:
+		lamp.visible = on
+
+
+# A character standing still bobs 1 pixel up and down (offset, so it never fights position tweens)
+func _idle_bob(sprite: Sprite2D, idle: bool) -> void:
+	sprite.offset.y = -1.0 if idle and fposmod(t, 1.2) < 0.6 else 0.0
 
 
 func _fade_from_black(time: float) -> void:
@@ -678,6 +753,14 @@ func _soft_dot() -> GradientTexture2D:
 	soft_dot.fill_from = Vector2(0.5, 0.5)
 	soft_dot.fill_to = Vector2(0.5, 0.0)
 	return soft_dot
+
+
+# Particles that fade in, stay bright, then fade out over their life
+func _fade_ramp() -> Gradient:
+	var g = Gradient.new()
+	g.colors = PackedColorArray([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+	g.offsets = PackedFloat32Array([0.0, 0.25, 1.0])
+	return g
 
 
 # A thin bright line that fades at both ends: the tunnel's star streaks

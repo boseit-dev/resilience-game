@@ -14,7 +14,7 @@ config/name="RESILIENCE"
 config/description="RESILIENCE is a 2D adventure platformer where a scientist gets trapped in a mysterious dimension called The Between. Explore strange worlds, unlock new abilities, overcome challenges and fight your way home. Every setback makes you stronger. Can you escape?"
 run/main_scene="res://main_menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
-config/icon="res://icon.svg"
+config/icon="res://icon.png"
 
 [autoload]
 

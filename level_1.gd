@@ -436,6 +436,9 @@ func _respawn_player() -> void:
 	player.get_node("Camera2D").reset_smoothing()
 	get_tree().call_group("enemies", "reset_after_player_death")
 	get_tree().call_group("arrows", "queue_free")
+	if pad_unlocked and pads_remaining == 0:   # never stuck: some walls need a Bounce Pad
+		pads_remaining = 1
+		_update_hud()
 	# Come back with a white flash, stretching back into shape
 	var sprite = player.get_node("Sprite2D")
 	sprite.visible = true
@@ -474,11 +477,12 @@ func _show_game_over() -> void:
 	var appear = create_tween()
 	appear.tween_interval(0.35)
 	appear.tween_property(game_over_screen, "modulate:a", 1.0, 0.8)
-	get_tree().create_timer(GAME_OVER_TIME).timeout.connect(_restart_after_game_over)
+	get_tree().create_timer(GAME_OVER_TIME, false).timeout.connect(_restart_after_game_over)   # waits while paused
 
 
 func _restart_after_game_over() -> void:
 	if is_inside_tree() and is_instance_valid(game_over_screen):
+		get_tree().paused = false   # never restart into a frozen level
 		get_tree().reload_current_scene()
 
 

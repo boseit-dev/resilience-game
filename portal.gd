@@ -35,6 +35,8 @@ func _on_body_entered(body: Node2D) -> void:
 	Sfx.play("portal_enter")
 
 	if ResourceLoader.exists(next_scene):
+		if next_scene.ends_with("ending.tscn"):
+			SaveGame.finish_story()   # the last gateway: the story is complete
 		get_tree().call_deferred("change_scene_to_file", next_scene)
 	else:
 		$Message.text = next_scene.get_file().get_basename().replace("_", " ").to_upper() + " COMING SOON"

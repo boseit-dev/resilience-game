@@ -223,7 +223,7 @@ func _build_title() -> void:
 
 func _build_main_page() -> Control:
 	var page = _page()
-	var resume = _menu_button(page, "Continue Game", func(): _go(SaveGame.level_scene(SaveGame.current_level)))
+	var resume = _menu_button(page, "Continue Game", func(): _go(SaveGame.continue_scene()))
 	var new_game = _menu_button(page, "New Game", func(): pass)
 	new_game.pressed.connect(_on_new_game.bind(new_game))
 	new_game.focus_exited.connect(func():

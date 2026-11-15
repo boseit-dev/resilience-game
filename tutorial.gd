@@ -139,7 +139,7 @@ func _start_story() -> void:
 		SaveGame.start_new_game()
 		_leave(SaveGame.STORY_START)
 	else:
-		_leave(SaveGame.level_scene(SaveGame.current_level))
+		_leave(SaveGame.continue_scene())
 
 
 func _leave(scene: String) -> void:
