@@ -1,0 +1,41 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# macOS / editor clutter
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.TMP
+
+# Backups (including Godot's own *.orig and our pre-change copies)
+*.bak
+*.orig
+*.backup
+*.pre-*
+*-backup*/
+backup/
+backups/
+
+# Exported builds and release zips
+/build/
+/builds/
+/export/
+/exports/
+*.zip
+
+# Secrets (keys, passwords, export credentials, signing files)
+.env
+.env.*
+*.pem
+*.key
+*.keystore
+*.jks
+*.p12
+export_credentials.cfg

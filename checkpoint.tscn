@@ -1,0 +1,47 @@
+[gd_scene format=3]
+
+[ext_resource type="Texture2D" path="res://assets/Deep-Night/Tiles-and-Enemies-transparent.png" id="1_luqgl"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_r6hke"]
+size = Vector2(24, 56)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tnhlw"]
+atlas = ExtResource("1_luqgl")
+region = Rect2(176, 64, 8, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_s20m7"]
+atlas = ExtResource("1_luqgl")
+region = Rect2(192, 80, 8, 8)
+
+[sub_resource type="Gradient" id="Gradient_q25r3"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_4eun3"]
+gradient = SubResource("Gradient_q25r3")
+width = 128
+height = 128
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[node name="Checkpoint" type="Area2D" unique_id=1261735552 groups=["checkpoint"]]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=888570573]
+position = Vector2(0, -14)
+shape = SubResource("RectangleShape2D_r6hke")
+
+[node name="Pole" type="Sprite2D" parent="." unique_id=1453328508]
+position = Vector2(14, -3)
+texture = SubResource("AtlasTexture_tnhlw")
+
+[node name="Flame" type="Sprite2D" parent="." unique_id=1327479285]
+modulate = Color(0.45, 0.5, 0.65, 1)
+position = Vector2(14, -23)
+texture = SubResource("AtlasTexture_s20m7")
+
+[node name="Glow" type="PointLight2D" parent="." unique_id=983397996]
+position = Vector2(14, -23)
+enabled = false
+color = Color(0.5137255, 0.8509804, 1, 1)
+texture = SubResource("GradientTexture2D_4eun3")
+texture_scale = 1.6

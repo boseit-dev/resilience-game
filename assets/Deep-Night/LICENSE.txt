@@ -1,0 +1,9 @@
+Deep Night - 8x8 Platformer Assets
+Created by VEXED (https://v3x3d.itch.io/deep-night)
+Also listed on OpenGameArt: https://opengameart.org/node/110017
+
+License: Creative Commons Zero (CC0 1.0 Universal)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Tiles-and-Enemies-transparent.png is a copy of Tiles-and-Enemies.png with the
+dark background colour made transparent (made for RESILIENCE, same CC0 licence).

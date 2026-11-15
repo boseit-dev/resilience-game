@@ -1,0 +1,4 @@
+far_hills.png and near_hills.png were made for RESILIENCE from Kenney's Pixel Platformer
+background sheet (assets/kenney_pixel-platformer/Tilemap/tilemap-backgrounds_packed.png):
+the sky colour was removed, the shapes were recoloured as dark night silhouettes and mirrored.
+Original: Kenney (www.kenney.nl), Creative Commons Zero (CC0 1.0). Same licence.

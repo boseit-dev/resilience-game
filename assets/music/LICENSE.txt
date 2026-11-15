@@ -1,0 +1,14 @@
+"Level 1" from "5 Chiptunes (Action)" (Retro Game Music Pack) by Juhani Junkala (SubspaceAudio)
+https://opengameart.org/content/5-chiptunes-action
+
+License: CC0 (public domain). From the pack's INFO.txt: "These music tracks have been released
+under CC0 creative commons license. You can do anything you want with these tunes."
+level_1_theme.ogg is "Juhani Junkala [Retro Game Music Pack] Level 1.wav" converted to Ogg Vorbis.
+It loops seamlessly.
+boss_theme.ogg is "Juhani Junkala [Retro Game Music Pack] Level 3.wav" from the same pack (CC0), converted the same way.
+The other tracks in the pack (Level 2, Level 3, Title Screen, Ending) are also CC0
+and could be used for later levels.
+
+night_shade.mp3 / .ogg (only if you add it yourself): "Night Shade" by AdhesiveWombat.
+His terms (soundcloud.com/adhesivewombat): free for non-commercial games/projects; for commercial
+games/projects, contact the artist first. Credit: Music: AdhesiveWombat - Night Shade.

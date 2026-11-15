@@ -1,0 +1,5 @@
+Swishes Sound Pack by artisticdude
+https://opengameart.org/content/swishes-sound-pack
+13 swish sound effects made for the FOSS RPG "Summoning Wars".
+
+License: CC0 (public domain). swish-1.wav and swish-4.wav are unchanged copies.

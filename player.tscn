@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://bwdwgrtbg5vef"]
+
+[ext_resource type="Script" uid="uid://m8od7apq33xu" path="res://player.gd" id="1_onrkg"]
+[ext_resource type="Texture2D" uid="uid://cfnvsx2kxwcjg" path="res://assets/kenney_pixel-platformer/Tiles/Characters/tile_0002.png" id="2_onrkg"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_nds2u"]
+size = Vector2(22, 24)
+
+[node name="Player" type="CharacterBody2D" unique_id=196655726]
+script = ExtResource("1_onrkg")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=688881053]
+texture_filter = 1
+texture = ExtResource("2_onrkg")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1281409380]
+position = Vector2(0.25, -0.25)
+shape = SubResource("RectangleShape2D_nds2u")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1748992359]
+position = Vector2(0, -50)
+zoom = Vector2(2, 2)
+limit_left = 0
+limit_bottom = 560
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
