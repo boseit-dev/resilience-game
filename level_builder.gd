@@ -8,11 +8,18 @@ extends Node2D
 # checkpoints, secrets, signs, crystals, regions, and for the lab levels:
 #   movers  [x, top, width, travel x, travel y, seconds]       moving platforms (moving_platform.gd)
 #   zappers [x, y, length, vertical?, on s, off s, delay, boss?]  timed electric beams (zapper.gd);
-#           boss = true: stays off until the boss switches it on
+#           boss = true: stays off until the boss switches it on (or a group name, e.g. "finale_zapper")
 #   doors   [x, floor top, height, [lever positions]]          a door that opens when every lever is touched
 #   lamps   [x, y, colour]                                     flickering lab lights
 #   npcs    [name, Kenney character number, x, floor top]      people (and terminals) you can talk to
 #   regions can have a 7th item: the music for that area
+# and for the caverns (Level 3):
+#   crumbles [x, top, width]                                   ledges that fall when you stand on them
+#   rocks    [x, floor top, seconds]                           a rock drops here every few seconds
+#   spires   [x, y, height]                                    rock spikes for decoration (height < 0 hangs down)
+#   statues  [x, floor top, Kenney character number]           ancient stone statues
+#   puzzles  [{"type": "beam", ...}, ...]                      see puzzles/puzzle.gd; they open things in
+#            "made" by number, e.g. ["door", 0] = the first door in the doors table
 # (all optional).
 # The level scene must have DarkGroundArt, FrostEdges, Decor (with CrystalGlow),
 # Hazards/SpikeGarden1 and Mood/Darkness: they are copied for the new parts.
@@ -24,6 +31,8 @@ const MOVER = preload("res://moving_platform.gd")
 const ZAPPER = preload("res://zapper.gd")
 const DOOR = preload("res://lab_door.gd")
 const NPC = preload("res://npc.tscn")
+const CRUMBLE = preload("res://crumbling_platform.gd")
+const ROCKS = preload("res://rock_trap.gd")
 const ENEMY_SCENES = {
 	"sword": preload("res://enemies/sword_fighter.tscn"),
 	"archer": preload("res://enemies/archer.tscn"),
@@ -42,6 +51,8 @@ const STYLES = {
 	"stone": {"stone": true, "tint": Color(0.82, 0.84, 0.9)},
 	"ember": {"stone": true, "tint": Color(1.0, 0.62, 0.55)},
 	"lab": {"stone": true, "tint": Color(0.58, 0.7, 0.95)},     # cold steel
+	"cave": {"stone": true, "tint": Color(0.62, 0.5, 0.88)},    # deep purple rock
+	"ruin": {"stone": true, "tint": Color(0.75, 0.68, 0.6)},    # old carved stone
 }
 
 const SHEET = preload("res://assets/Deep-Night/Tiles-and-Enemies-transparent.png")
@@ -57,6 +68,7 @@ var lamps: Array[PointLight2D] = []
 var current_region = -1
 var seen_regions = {}
 var darkness_tween: Tween
+var made = {"door": [], "mover": [], "zapper": []}   # so puzzles can say which one they open
 
 
 func build(map: Dictionary) -> void:
@@ -104,7 +116,11 @@ func build(map: Dictionary) -> void:
 		mover.width = m[2]
 		mover.travel = Vector2(m[3], m[4])
 		mover.time = m[5]
+		mover.running = m.size() < 7 or m[6]   # a 7th item false = waits for a puzzle (or the boss) to start it
+		if m.size() > 7:
+			mover.add_to_group(m[7])           # e.g. "boss_mover": the final boss starts these
 		add_child(mover)
+		made.mover.append(mover)
 	for z in map.get("zappers", []):
 		var zapper = ZAPPER.new()
 		zapper.position = Vector2(z[0], z[1])
@@ -114,17 +130,21 @@ func build(map: Dictionary) -> void:
 		zapper.off_time = z[5]
 		zapper.offset = z[6]
 		zapper.active = z.size() < 8 or not z[7]
-		if not zapper.active:
-			zapper.add_to_group("boss_zapper")
+		if not zapper.active:   # true = "boss_zapper", or the name of the group that switches it on
+			zapper.add_to_group("boss_zapper" if z[7] is bool else z[7])
 		zapper.level = level
 		add_child(zapper)
+		made.zapper.append(zapper)
 	for d in map.get("doors", []):
 		var door = DOOR.new()
 		door.position = Vector2(d[0], d[1])
 		door.height = d[2]
 		door.levers = d[3]
 		door.level = level
+		if d.size() > 4:
+			door.colors = d[4]
 		add_child(door)
+		made.door.append(door)
 	for l in map.get("lamps", []):
 		_add_crystal(l[0], l[1], l[2])
 		lamps.append(get_child(get_child_count() - 2))   # the light just added (before its sparks)
@@ -135,6 +155,38 @@ func build(map: Dictionary) -> void:
 		npc.look = load("res://assets/kenney_pixel-platformer/Tiles/Characters/tile_%04d.png" % n[1]) if n[1] is int else load(n[1])
 		npc.position = Vector2(n[2], n[3])
 		add_child(npc)
+	for c in map.get("crumbles", []):
+		var ledge = CRUMBLE.new()
+		ledge.position = Vector2(c[0], c[1])
+		ledge.width = c[2]
+		ledge.level = level
+		add_child(ledge)
+	for r in map.get("rocks", []):
+		var trap = ROCKS.new()
+		trap.position.x = r[0]
+		trap.floor_y = r[1]
+		trap.every = r[2]
+		add_child(trap)
+	for s in map.get("spires", []):
+		var spire = Polygon2D.new()
+		spire.polygon = PackedVector2Array([Vector2(-s[2] * 0.25, 0), Vector2(0, -s[2]), Vector2(s[2] * 0.25, 0)])
+		spire.color = Color(0.16, 0.12, 0.24)
+		spire.position = Vector2(s[0], s[1])
+		spire.z_index = -1
+		add_child(spire)
+	for s in map.get("statues", []):
+		var statue = Sprite2D.new()
+		statue.texture = load("res://assets/kenney_pixel-platformer/Tiles/Characters/tile_%04d.png" % s[2])
+		statue.scale = Vector2(3, 3)
+		statue.modulate = Color(0.55, 0.52, 0.62)   # grey stone
+		statue.position = Vector2(s[0], s[1] - 27)
+		statue.z_index = -1
+		add_child(statue)
+	for p in map.get("puzzles", []):   # last: they open things made above
+		var puzzle = load("res://puzzles/%s_puzzle.gd" % p.type).new()
+		puzzle.data = p
+		puzzle.level = level
+		add_child(puzzle)
 
 
 func _process(_delta: float) -> void:
@@ -216,18 +268,18 @@ func _layers_for(style_name: String) -> Array:
 	if style_name == "frost":
 		return names.map(func(n): return level.get_node(n))
 	if not style_layers.has(style_name):
-		var made = []
+		var copies = []
 		for n in names:
 			var original: TileMapLayer = level.get_node(n)
 			var copy = TileMapLayer.new()
 			copy.name = n + "_" + style_name
 			copy.tile_set = original.tile_set
 			copy.modulate = STYLES[style_name].tint
-			made.append(copy)
+			copies.append(copy)
 			# the level is still starting up, so add the copy (after the originals) a moment later
 			level.add_child.call_deferred(copy)
 			level.move_child.call_deferred(copy, level.get_node("Decor").get_index() + 1)
-		style_layers[style_name] = made
+		style_layers[style_name] = copies
 	return style_layers[style_name]
 
 

@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://warden.tscn" id="1_warden"]
+[ext_resource type="Script" path="res://null_architect.gd" id="2_architect"]
+
+[node name="NullArchitect" instance=ExtResource("1_warden")]
+script = ExtResource("2_architect")
+health = 12
+speed = 100.0
+patrol_distance = 380.0

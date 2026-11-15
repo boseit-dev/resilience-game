@@ -89,7 +89,7 @@ func _ride(lift: Node, step_off_x: float) -> float:
 # ---------- tests ----------
 
 func _test_intro() -> void:
-	load("res://lab_intro.gd").seen = false
+	load("res://lab_intro.gd").seen.clear()
 	await _fresh(Vector2(140, 368), true, L2)
 	_check("Intro: plays on the first visit (no control during it)", not level.player.is_physics_processing() and level.has_node("Intro"))
 	await _tap(KEY_SPACE)
@@ -332,8 +332,12 @@ func _test_boss() -> void:
 		root.get_node("Sfx").music_target.resource_path.ends_with("victory_theme.ogg") and zappers.all(func(z): return not z.active)
 		and level.get_node("ExitPortal").is_open)
 	level.player.global_position = level.get_node("ExitPortal").global_position + Vector2(0, -13)
-	await _frames(10)
-	_check("Portal: says LEVEL 3 COMING SOON (Level 3 not built yet)", level.get_node("ExitPortal/Message").text == "LEVEL 3 COMING SOON")
+	for i in 120:
+		await physics_frame
+		if current_scene != level and current_scene != null:
+			break
+	await _frames(5)
+	_check("Portal: takes you on to Level 3", current_scene != null and current_scene.name == "Level3")
 	_use_test_save()
 
 

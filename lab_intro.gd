@@ -1,13 +1,14 @@
 extends Node
 
-# RESILIENCE - LEVEL 2 OPENING (about 18 seconds, SPACE or ENTER skips)
-# The scientist walks into the dark lab, a terminal wakes up with a warning, something
-# mechanical booms in the distance, then "CHAPTER II" appears and you get control.
-# It only plays the first time the level loads this session (not after deaths or Game Over).
+# RESILIENCE - LEVEL OPENING (about 18 seconds, SPACE or ENTER skips). Used by Levels 2 and 3.
+# The scientist walks in, some text types itself out (a lab terminal, a carving on the wall),
+# something booms in the distance, then the chapter title appears and you get control.
+# It only plays the first time each level loads this session (not after deaths or Game Over).
 
-const TERMINAL_TEXT = "> SECURITY LOG 7\n> PROTOTYPE UNIT: ACTIVE\n> WARNING: EXPERIMENTAL GUARDIAN\n  NOT CONTAINED"
-const TITLE = "CHAPTER II  —  FORGOTTEN LABORATORIES"
-static var seen = false
+@export var text = "> SECURITY LOG 7\n> PROTOTYPE UNIT: ACTIVE\n> WARNING: EXPERIMENTAL GUARDIAN\n  NOT CONTAINED"
+@export var title = "CHAPTER II  —  FORGOTTEN LABORATORIES"
+@export var text_color = Color(0.55, 1.6, 1.8)
+static var seen = {}   # the titles already shown
 
 @export var terminal_position = Vector2(260, 330)
 var level: Node
@@ -17,10 +18,10 @@ var terminal: Label
 
 
 func _ready() -> void:
-	if seen:
+	if seen.has(title):
 		queue_free()
 		return
-	seen = true
+	seen[title] = true
 	_start.call_deferred()   # after the level has made its HUD
 
 
@@ -45,10 +46,10 @@ func _start() -> void:
 		bars.add_child(bar)
 
 	terminal = Label.new()   # the computer screen text, typed out
-	terminal.text = TERMINAL_TEXT
+	terminal.text = text
 	terminal.visible_ratio = 0.0
 	terminal.add_theme_font_size_override("font_size", 8)
-	terminal.add_theme_color_override("font_color", Color(0.55, 1.6, 1.8))
+	terminal.add_theme_color_override("font_color", text_color)
 	terminal.position = terminal_position + Vector2(-60, -70)
 	level.add_child(terminal)
 
@@ -69,7 +70,7 @@ func _start() -> void:
 	steps.tween_property(player, "global_position", end, 1.5)
 	steps.tween_callback(func():
 		level.hud_layer.show()
-		level._show_banner(TITLE)
+		level._show_banner(title)
 		Sfx.play("portal_open"))
 	steps.tween_property(camera, "offset", Vector2.ZERO, 1.5).set_trans(Tween.TRANS_SINE)
 	steps.tween_interval(2.0)
@@ -95,6 +96,6 @@ func _finish() -> void:
 	fade.tween_property(terminal, "modulate:a", 0.0, 0.6)
 	fade.tween_callback(terminal.queue_free)
 	level.hud_layer.show()
-	level._show_banner(TITLE)
+	level._show_banner(title)
 	bars.queue_free()
 	get_tree().create_timer(0.25).timeout.connect(player.set_physics_process.bind(true))   # so the skip key doesn't also jump

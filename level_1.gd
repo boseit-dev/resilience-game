@@ -523,7 +523,7 @@ func _on_boss_defeated(boss: Node2D) -> void:
 	fly.tween_callback(func():
 		fragment.queue_free()
 		Sfx.play("rare_reward")
-		_show_banner("GATEWAY FRAGMENT RECOVERED  ·  %d / 4" % SaveGame.fragments))
+		_show_banner("GATEWAY FRAGMENT RECOVERED  ·  %d / %d" % [SaveGame.fragments, SaveGame.LEVEL_COUNT]))
 
 
 # ---------- small helpers ----------

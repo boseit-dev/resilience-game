@@ -13,6 +13,7 @@ var travel = Vector2(200, 0)      # how far it moves from its start
 var time = 3.0                    # seconds for one trip (there and back takes twice as long)
 var start: Vector2
 var t = 0.0
+var running = true                # a puzzle can stop it: close() stops, open() starts
 
 
 func _ready() -> void:
@@ -33,7 +34,17 @@ func _ready() -> void:
 		add_child(tile)
 		x += 18.0
 
+func open() -> void:
+	running = true
+
+
+func close() -> void:
+	running = false
+
+
 func _physics_process(delta: float) -> void:
+	if not running:
+		return
 	t += delta
 	var phase = 0.5 - 0.5 * cos(t * PI / time)   # 0 -> 1 -> 0, slowing down at each end
 	position = start + travel * phase

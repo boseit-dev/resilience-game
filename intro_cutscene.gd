@@ -39,6 +39,8 @@ const BEATS = [
 	[29.5, "whoosh"], [32.5, "arrival"], [34.4, "land"], [35.6, "title"], [40.0, "end"],
 ]
 
+var beats = BEATS              # the ending (ending.gd) swaps in its own
+var next_scene = NEXT_SCENE
 var t = 0.0
 var next_beat = 0
 var mode = "idle"
@@ -391,8 +393,8 @@ func _build_overlay() -> void:
 
 func _process(delta: float) -> void:
 	t += delta
-	while next_beat < BEATS.size() and t >= BEATS[next_beat][0]:
-		_run_beat(BEATS[next_beat][1])
+	while next_beat < beats.size() and t >= beats[next_beat][0]:
+		_run_beat(beats[next_beat][1])
 		next_beat += 1
 
 	# Screens blink and their data lines scroll (fast and red once things go wrong)
@@ -548,7 +550,7 @@ func _finish() -> void:
 	finished = true
 	var tween = create_tween()
 	tween.tween_property(fade, "color:a", 1.0, 0.5)
-	tween.tween_callback(func(): get_tree().change_scene_to_file(NEXT_SCENE))
+	tween.tween_callback(func(): get_tree().change_scene_to_file(next_scene))
 
 
 # Captions type themselves out letter by letter

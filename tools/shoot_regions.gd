@@ -34,7 +34,8 @@ func _initialize() -> void:
 	var mode = args[1] if args.size() > 1 else ""
 	var spots = {"tutorial": TUTORIAL_SPOTS, "level_2": LEVEL_2_SPOTS}.get(mode, SPOTS)
 	var scene = {"tutorial": "res://tutorial.tscn", "level_2": "res://level_2.tscn"}.get(mode, "res://level_1.tscn")
-	load("res://lab_intro.gd").seen = true   # no opening cutscene in screenshots
+	for t in ["CHAPTER II  —  FORGOTTEN LABORATORIES", "CHAPTER III  —  THE FRACTURED CAVERNS"]:
+		load("res://lab_intro.gd").seen[t] = true   # no opening cutscene in screenshots
 	var level = load(scene).instantiate()
 	root.add_child(level)
 	await process_frame

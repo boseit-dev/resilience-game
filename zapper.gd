@@ -55,6 +55,15 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 
 
+# Puzzles switch beams with these: open() = off (safe to pass), close() = on again
+func open() -> void:
+	active = false
+
+
+func close() -> void:
+	active = true
+
+
 func _physics_process(delta: float) -> void:
 	if not active:
 		beam.clear_points()

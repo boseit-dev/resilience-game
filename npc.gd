@@ -19,6 +19,12 @@ const DIALOGUE = {
 	"LOG 40": ["DAY 40: Unit 7 can fetch the fragments for us.", "It doesn't feel pain. It doesn't feel anything."],
 	"LOG 41": ["DAY 41: Unit 7 took the fragment and sealed the core.", "It thinks WE are the threat now.", "Prototype chamber: east wing, past security."],
 	"LOG 55": ["DAY 55: Nobody who went into the east vent came back."],
+	"MIRA": ["You came down from the laboratories? With their energy?", "These caverns lead to the core of The Between.", "Rocks fall without warning. Watch the dust.", "Something guards the core. Nobody gets past it."],
+	"MINER LOG": ["Dead end. The tunnel came down behind us.", "If you're reading this, don't wait for help."],
+	"ENGINEER LOG": ["These machines still run on crystal power.", "One crystal can't feed them all. Choose wisely.", "A door that has had power stays open."],
+	"THE KEEPER": ["You carry two fragments. I can feel them.", "The Between was built as a prison, not a world.", "Its Architect keeps the gateway closed so nobody leaves.", "When the moon rose, the flame was lit.", "The crystal drank the fire, and the gate awoke."],
+	"TABLET": ["The crystals are breaking. The energy leaks into The Between.", "When the core dies, every gateway closes forever.", "Only the Architect's core can open the way home."],
+	"TRIAL STONE": ["Five trials guard the deep chamber.", "Each one remembers a lesson you already learned."],
 }
 
 var lines: Array = ["..."]   # filled from DIALOGUE in _ready()

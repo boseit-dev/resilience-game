@@ -17,3 +17,7 @@ downloaded 2026-11-15 from the page above, converted to mono 32 kHz WAV. Used in
 level_2_theme.ogg is "Juhani Junkala [Retro Game Music Pack] Level 2.wav" and victory_theme.ogg is
 "... Ending.wav", both from the same pack (CC0), downloaded 2026-11-15 from the page above and
 converted to Ogg Vorbis. Used in Level 2 (Forgotten Laboratories) and after its boss.
+Level 3 (The Fractured Caverns, the final level): level_3_theme.ogg ("1. Stage 1"), caverns_danger.ogg ("2. Stage 2"),
+architect_theme.ogg ("3. Boss Fight") and sanctuary_theme.ogg ("4. Stage Select") are from
+"4 Chiptunes (Adventure)" / [Chiptune Adventures] by Juhani Junkala (SubspaceAudio), CC0,
+https://opengameart.org/content/4-chiptunes-adventure (downloaded 2026-11-15, OGG files used as they are).

@@ -47,6 +47,7 @@ var quit_seconds_left = 0
 
 
 func _ready() -> void:
+	load("res://null_architect.gd").beaten_this_run = false   # a new visit to Level 3 starts at the beginning
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR  # smooth gradients (the levels use crisp pixels)
 	screen = get_viewport().get_visible_rect().size
 	set_anchors_preset(Control.PRESET_TOP_LEFT)  # we place the menu ourselves (see _fit_to_window)
@@ -249,12 +250,14 @@ func _build_main_page() -> Control:
 	return page
 
 
-# One button per level: every level that is built can be played (handy for testing and demos);
-# the rest say "Coming soon". Continue still follows the story save.
+# One button per level: every level can be played (handy for testing and demos).
+# Continue still follows the story save. Level 3 is the final chapter.
 func _build_levels_page() -> Control:
 	var page = _page()
 	for n in range(1, SaveGame.LEVEL_COUNT + 1):
 		var title = "%d   %s" % [n, SaveGame.LEVEL_NAMES[n - 1].capitalize()]
+		if n == SaveGame.LEVEL_COUNT:
+			title += "   ·   Final"
 		var button = _menu_button(page, title, _go.bind(SaveGame.level_scene(n)))
 		button.add_theme_font_size_override("font_size", 19)
 		if not ResourceLoader.exists(SaveGame.level_scene(n)):

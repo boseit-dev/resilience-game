@@ -877,8 +877,9 @@ func _test_save_and_level_select() -> void:
 	_use_test_save()
 	var menu = await _fresh_menu()
 	var levels = menu.pages["levels"]
-	_check("Level Select: every built level (1 and 2) can be picked, Level 3 says Coming soon",
-		not levels.get_child(0).disabled and not levels.get_child(1).disabled and levels.get_child(2).disabled and levels.get_child(2).text.ends_with("Coming soon"))
+	_check("Level Select: the three levels (and Back), all playable, Level 3 marked Final",
+		levels.get_child_count() == 4 and not levels.get_child(0).disabled and not levels.get_child(1).disabled
+		and not levels.get_child(2).disabled and levels.get_child(2).text.ends_with("Final"))
 	menu._show_page("main")
 	menu.pages["main"].get_child(2).emit_signal("pressed")   # Tutorial
 	await create_timer(1.5).timeout
@@ -896,14 +897,14 @@ func _test_save_and_level_select() -> void:
 	config.set_value("story", "completed", ["junk", 3, 12])
 	config.save(save.path)
 	save.load_save()
-	_check("Save: a damaged save is pulled back into range", save.unlocked_level == 5 and save.current_level == 0 and save.completed == [3])
+	_check("Save: a damaged save is pulled back into range", save.unlocked_level == 3 and save.current_level == 0 and save.completed == [3])
 	_use_test_save()
 	save.complete_level(1, ["pad"])
 	menu = await _fresh_menu()
 	var resume = menu.pages["main"].get_child(0)
 	_check("Continue: after Level 1 it is enabled (goes to Level 2)", not resume.disabled and save.current_level == 2)
-	_check("Level Select: Level 2 can be played, Level 3 is not built yet",
-		not menu.pages["levels"].get_child(1).disabled and menu.pages["levels"].get_child(2).text.ends_with("Coming soon"))
+	_check("Level Select: no Coming soon levels any more (3 levels, the last is the finale)",
+		not menu.pages["levels"].get_child(1).disabled and not menu.pages["levels"].get_child(2).text.contains("Coming soon"))
 	save.current_level = 1
 	menu = await _fresh_menu()
 	_check("Continue: with a save it's enabled and selected", not menu.pages["main"].get_child(0).disabled and root.gui_get_focus_owner().text == "Continue Game")

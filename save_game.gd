@@ -9,10 +9,11 @@ extends Node
 #   fragments        Gateway Fragments collected (one per boss)
 #   powers           powers you keep in later levels: "pad", "double_jump", "dash"
 #   current_level    where Continue Game takes you
+#   finished         true once you have escaped The Between (the ending has played)
 
 var path = "user://save.cfg"   # the self-test points this at a test file, so it never touches your save
-const LEVEL_COUNT = 5
-const LEVEL_NAMES = ["THE ARRIVAL", "FORGOTTEN LABORATORIES", "THE FRACTURED CAVERNS", "THE BROKEN GATEWAY", "THE HEART OF THE BETWEEN"]
+const LEVEL_COUNT = 3   # Level 3 is the final level
+const LEVEL_NAMES = ["THE ARRIVAL", "FORGOTTEN LABORATORIES", "THE FRACTURED CAVERNS"]
 const STORY_START = "res://intro_cutscene.tscn"   # New Game: the lab accident, then Level 1
 
 var unlocked_level = 1
@@ -20,6 +21,7 @@ var completed: Array = []
 var fragments = 0
 var powers: Array = []
 var current_level = 0      # 0 = no story started yet (Continue is greyed out)
+var finished = false
 
 
 func _ready() -> void:
@@ -46,6 +48,7 @@ func start_new_game() -> void:
 	fragments = 0
 	powers = []
 	current_level = 1
+	finished = false
 	save()
 
 
@@ -62,6 +65,13 @@ func complete_level(number: int, kept_powers: Array) -> void:
 	save()
 
 
+# Called when you reach the gateway at the end of Level 3, before the ending plays
+func finish_story() -> void:
+	complete_level(LEVEL_COUNT, powers)
+	finished = true
+	save()
+
+
 func save() -> void:
 	var config = ConfigFile.new()
 	config.set_value("story", "unlocked_level", unlocked_level)
@@ -69,6 +79,7 @@ func save() -> void:
 	config.set_value("story", "fragments", fragments)
 	config.set_value("story", "powers", powers)
 	config.set_value("story", "current_level", current_level)
+	config.set_value("story", "finished", finished)
 	config.save(path)
 
 
@@ -82,3 +93,4 @@ func load_save() -> void:
 	fragments = completed.size()
 	powers = Array(config.get_value("story", "powers", [])).filter(func(p): return p in ["pad", "double_jump", "dash"])
 	current_level = clampi(int(config.get_value("story", "current_level", 0)), 0, unlocked_level)
+	finished = config.get_value("story", "finished", false) == true
